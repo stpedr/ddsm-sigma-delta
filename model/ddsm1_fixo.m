@@ -12,14 +12,17 @@
 %    A. modulador + medida de SNR
 %    B. varredura de excursao do acumulador  -> dimensiona W_ACC (card 3.7)
 %    C. exportacao de vetores para o testbench (card 4.1)
+%
+%  O laco do modulador esta em ddsm1.m e a medida de SNR em snr_banda.m.
 
 clear; clc; close all;
 
 %% ===============================================================
 %  PARAMETROS
 %  ===============================================================
-W_IN  = 16;      % largura da entrada, em bits, com sinal
-GUARD = 3;       % bits de guarda do acumulador (a secao B valida este numero)
+P     = le_params();   % fonte unica: rtl/ddsm1_params.vh (nao repetir aqui)
+W_IN  = P.W_IN;        % largura da entrada, em bits, com sinal
+GUARD = P.GUARD;       % bits de guarda do acumulador (a secao B valida este numero)
 W_ACC = W_IN + GUARD;
 
 OSR = 64;
@@ -96,15 +99,13 @@ fprintf('  W_ACC adotado    = %d bits -> margem de %d bit(s)\n\n', ...
 %% ===============================================================
 %  C. EXPORTACAO DE VETORES PARA O TESTBENCH
 %  ===============================================================
-%  Formato: uma linha por ciclo, "<entrada_decimal_com_sinal> <bit_de_saida>".
-%  O testbench cocotb le a coluna 1, aplica no DUT e compara com a coluna 2.
+%  Formato definido em grava_vetores.m. tb/tb_ddsm1.v le o arquivo direto de
+%  sim/, aplica a coluna 1 no DUT, compara com a coluna 2 e recusa vetores
+%  cujo cabecalho (W_IN, W_ACC) nao bata com rtl/ddsm1_params.vh.
 
-fid = fopen('vetores_ddsm1.txt','w');
-fprintf(fid, '# W_IN=%d W_ACC=%d N=%d OSR=%d A=%.2f K=%d\n', ...
-        W_IN, W_ACC, N, OSR, A, K);
-fprintf(fid, '%d %d\n', [u; y]);
-fclose(fid);
-fprintf('--- C. vetores gravados em vetores_ddsm1.txt (%d linhas) ---\n', N);
+arq_vet = fullfile(fileparts(mfilename('fullpath')), '..', 'sim', 'vetores_ddsm1.txt');
+grava_vetores(arq_vet, u, y, W_IN, W_ACC, sprintf('OSR=%d A=%.2f K=%d', OSR, A, K));
+fprintf('--- C. vetores gravados em sim/vetores_ddsm1.txt (%d linhas) ---\n', N);
 
 %% ===============================================================
 %  GRAFICO
@@ -119,45 +120,3 @@ xline(1/(2*OSR), '--', 'borda da banda');
 xlabel('frequencia normalizada (f/fs)'); ylabel('PSD normalizada [dB]');
 title(sprintf('DDSM 1a ordem ponto fixo - W_{IN}=%d W_{ACC}=%d - SNR=%.1f dB', ...
       W_IN, W_ACC, SNR_dB));
-
-%% ===============================================================
-%  FUNCOES
-%  ===============================================================
-function [y, acc_max_abs, n_ovf] = ddsm1(u, FS, ACC_MIN, ACC_MAX)
-% Modulador de 1a ordem, aritmetica inteira, identico ao que o RTL faz.
-%   u   : vetor de entrada em LSBs (inteiros com sinal)
-%   y   : saida em {0,1}, como o pino do chip
-    N = numel(u);
-    y = zeros(1,N);
-    acc = 0;
-    yfb = -FS;              % realimentacao inicial (reset com saida em 0)
-    acc_max_abs = 0;
-    n_ovf = 0;
-
-    for i = 1:N
-        acc_ext = acc + (u(i) - yfb);      % soma na largura estendida
-
-        if acc_ext > ACC_MAX               % SATURACAO, nunca wrap-around:
-            acc = ACC_MAX; n_ovf = n_ovf + 1;   % wrap destruiria a NTF de
-        elseif acc_ext < ACC_MIN           % forma silenciosa
-            acc = ACC_MIN; n_ovf = n_ovf + 1;
-        else
-            acc = acc_ext;
-        end
-
-        y(i) = double(acc >= 0);           % quantizador = bit de sinal invertido
-        if y(i) == 1, yfb = FS; else, yfb = -FS; end
-
-        acc_max_abs = max(acc_max_abs, abs(acc));
-    end
-end
-
-function SNR_dB = snr_banda(y_bip, N, K, OSR)
-% SNR na banda util, com janela Hann e exclusao dos bins do tom.
-    P = abs(fft(y_bip .* hann(N).')).^2; P = P(1:N/2);
-    bin_banda = 2 : floor(N/(2*OSR));
-    bin_tom   = (K+1) + (-3:3);
-    Psig   = sum(P(bin_tom));
-    Pruido = sum(P(bin_banda)) - sum(P(intersect(bin_tom, bin_banda)));
-    SNR_dB = 10*log10(Psig / Pruido);
-end

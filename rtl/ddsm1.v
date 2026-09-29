@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
 // ddsm1.v — Modulador sigma-delta digital de 1a ordem
 //
-// Contrato (congelado a partir de ddsm1_fixo.m):
-//   W_IN  = 16 bits com sinal, complemento de dois
-//   GUARD = 2  -> W_ACC = 18 bits
+// Contrato congelado (valores de W_IN e GUARD em ddsm1_params.vh):
+//   W_IN bits com sinal, complemento de dois
+//   W_ACC = W_IN + GUARD bits
 //   realimentacao = +/- FS, com FS = 2^(W_IN-1)
 //   saturacao (nunca wrap-around)
 //   reset: acc = 0, saida = 0 (equivale a yfb = -FS no modelo)
@@ -12,9 +12,11 @@
 // em dout logo apos essa borda.
 // ---------------------------------------------------------------------------
 
+`include "ddsm1_params.vh"
+
 module ddsm1 #(
-    parameter integer W_IN  = 16,
-    parameter integer GUARD = 2
+    parameter integer W_IN  = `DDSM1_W_IN,
+    parameter integer GUARD = `DDSM1_GUARD
 )(
     input  wire                    clk,
     input  wire                    rst_n,   // reset sincrono, ativo baixo

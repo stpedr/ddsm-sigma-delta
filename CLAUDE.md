@@ -33,9 +33,14 @@ Concluído:
 
 - Golden model em ponto flutuante (`model/ddsm1_snr.m`), validado contra a teoria.
 - Golden model em ponto fixo (`model/ddsm1_fixo.m`), que é a referência definitiva.
-  GUARD corrigido de 3 para 2 (W_ACC = 18), SNR inalterado.
-  **Atenção:** em 29/09 o arquivo em disco ainda tinha `GUARD = 3`; conferir que
-  a correção foi salva antes de gerar novos vetores.
+  GUARD corrigido de 3 para 2 (W_ACC = 18), SNR inalterado. Com GUARD = 2 o
+  modelo regenera `sim/vetores_ddsm1.txt` idêntico byte a byte ao usado na
+  comparação bit a bit.
+- **Fonte única dos parâmetros:** `rtl/ddsm1_params.vh` (`DDSM1_W_IN`,
+  `DDSM1_GUARD`). O RTL e o TB fazem `` `include``; o MATLAB lê com
+  `model/le_params.m`. Nenhum outro arquivo repete esses números.
+- **Uma única implementação do laço** em `model/ddsm1.m` (antes havia uma cópia
+  em `figuras_validacao.m`). SNR da senoide em `model/snr_banda.m`.
 - Figuras de validação (`model/figuras_validacao.m`): SQNR × OSR, PSD e
   excursão do acumulador, com as curvas teóricas sobrepostas.
 - RTL em Verilog (`rtl/ddsm1.v`).
@@ -97,9 +102,22 @@ Concluído:
   registradores ficam em `x`.
 - **Latência de 1 ciclo** já é absorvida pelo testbench; não aplicar
   deslocamento adicional.
-- **`din.hex` e `yref.hex` são gitignored.** Regenerar com `model/exporta_hex.m`
-  ou a partir de `sim/vetores_ddsm1.txt` (coluna 1 → `mod(u, 2^16)` em `%04X`;
-  coluna 2 → `yref.hex`). Os dois precisam estar em `sim/` antes do `make`.
+- **Número duplicado em dois lugares.** Já causou dois tropeços: o `din.hex`
+  ausente (etapa manual de conversão) e o GUARD = 3 no modelo contra 2 no RTL.
+  Hoje: parâmetros só em `rtl/ddsm1_params.vh`; o TB lê `sim/vetores_*.txt`
+  direto (sem `.hex`), escolhido com `+VEC=`, e **recusa** vetores cujo
+  cabeçalho `W_IN`/`W_ACC` não bata com o `.vh`. Formato dos vetores só em
+  `model/grava_vetores.m`. Não reintroduzir cópias.
+
+## Rodar o golden model sem MATLAB
+
+Não há MATLAB na máquina de desenvolvimento. Os `.m` rodam sem alteração no
+Octave 8.4 da imagem Docker local `ddsm-octave:local` (Ubuntu 24.04 + `octave`,
+`octave-signal`, `gnuplot-nox`, `fonts-freefont-otf`). Antes dos scripts:
+`pkg load signal` (para `hann`), `graphics_toolkit('gnuplot')` com figuras
+invisíveis e um substituto de `xline` fora do repo. Os scripts do projeto
+continuam MATLAB puro; use só `plot`/`print` em figuras novas (Octave não tem
+`xline` nem `exportgraphics`).
 
 ## Gestão
 

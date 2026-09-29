@@ -147,21 +147,3 @@ end
 fprintf('excursao: max desvio de FS*(1+A) = %.4f LSB\n', ...
         max(abs(acc_sin - FS*(1+A_v))));
 fprintf('\nfiguras salvas em figs/ (PNG 300 dpi e PDF vetorial)\n');
-
-%% ---------------------------------------------------------------
-%  Funcao local (copia da de ddsm1_fixo.m, para o script ser autonomo)
-%  ---------------------------------------------------------------
-function [y, acc_max_abs, n_ovf] = ddsm1(u, FS, ACC_MIN, ACC_MAX)
-    N = numel(u); y = zeros(1,N);
-    acc = 0; yfb = -FS; acc_max_abs = 0; n_ovf = 0;
-    for i = 1:N
-        acc_ext = acc + (u(i) - yfb);
-        if     acc_ext > ACC_MAX, acc = ACC_MAX; n_ovf = n_ovf + 1;
-        elseif acc_ext < ACC_MIN, acc = ACC_MIN; n_ovf = n_ovf + 1;
-        else,  acc = acc_ext;
-        end
-        y(i) = double(acc >= 0);
-        if y(i) == 1, yfb = FS; else, yfb = -FS; end
-        acc_max_abs = max(acc_max_abs, abs(acc));
-    end
-end
