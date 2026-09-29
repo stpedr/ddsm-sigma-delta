@@ -81,6 +81,8 @@ denominador de ρ na forma irredutível, isto é, o período do ciclo-limite:
 | 1/4 | 5/8 | 8 |
 | 1/3 | 2/3 | 3 |
 | 1/2 | 3/4 | 4 |
+| −1 | 0 | 1 |
+| +1 | 1 | 1 |
 
 A raia mais baixa é a de k = P, em frequência **P·|ε|/2**. Ela está dentro da
 banda enquanto P·|ε|/2 < 1/(2·OSR):
@@ -91,9 +93,12 @@ A altura do platô é a soma das raias k = m·P (m = 1, 2, …) que caem na band
 cada uma com potência 8·sin²(π·m·P·ε/2)/(π·m·P)² na saída bipolar
 (`model/pn_plato_prev.m`).
 
-**Medida.** Zooms de ±400 LSB com passo de 4 LSB em torno de cada centro
-(`model/tons_idle_dc.m`). A meia-largura foi medida por dois caminhos
-independentes:
+**Medida.** Zooms com passo de 4 LSB (`model/tons_idle_dc.m`): ±400 LSB em
+torno de 0, 1/4, 1/3 e 1/2; de 0 a 1024 LSB para dentro da faixa em x = −1 e
+x = +1, o dobro da meia-largura prevista para P = 1. Nos extremos só existe o
+lado de dentro, porque a entrada vai de −FS a FS − 1. O centro +1 não é
+representável, e o zoom parte de FS − 1 (d = −1). A meia-largura foi medida por
+dois caminhos independentes:
 
 - pelo ruído: a primeira queda de mais de 10 dB entre pontos vizinhos, andando
   do centro para fora;
@@ -109,9 +114,12 @@ de ±2 LSB.
 | 1/4 | 8 | 64,0 | 66 / 66 | 66 / 66 | −51,7 dBFS | −51,7 dBFS |
 | 1/3 | 3 | 170,7 | 170 / 170 | 170 / 170 | −42,8 dBFS | −42,8 dBFS |
 | 1/2 | 4 | 128,0 | 130 / 130 | 130 / 130 | −45,4 dBFS | −45,4 dBFS |
+| −1 | 1 | 512,0 | — / 514 | — / 514 | −33,2 dBFS | −33,2 dBFS |
+| +1 | 1 | 512,0 | 511 / — | 511 / — | −33,2 dBFS | −33,2 dBFS |
 
-- Os dois métodos dão o mesmo valor nos 8 lados. Nos centros de código inteiro
-  a medida fica 2 LSB acima da previsão, por construção. No ponto exatamente
+- Os dois métodos dão o mesmo valor nos 10 lados medidos. Nos centros de código
+  inteiro a medida fica 2 LSB acima da previsão, por construção; em +1 a grade
+  está deslocada de 1 LSB (d = −1, −5, …), e a medida fica 1 LSB abaixo. No ponto exatamente
   sobre a borda prevista, a raia está sobre a borda da banda e ainda é contada
   em parte: em x = 0, d = 256 dá −46,9 dBFS e d = 260 dá −75,1 dBFS. A borda
   real está, portanto, no intervalo (256, 260], e o ponto médio é 258.
@@ -122,7 +130,13 @@ de ±2 LSB.
   escritas antes de rodar os zooms. Para x = 0, 1/4 e 1/3, os valores da tabela
   são previsões independentes, conferidas depois. Para x = 1/2, a largura
   (±128 LSB) e o pico (−45,4 dBFS) já tinham sido observados num zoom anterior;
-  ali a concordância é consistência, não previsão independente.
+  ali a concordância é consistência, não previsão independente. Para x = ±1,
+  a meia-largura (512 LSB) e a borda (−33,1 dBFS no ponto contínuo |d| = 511)
+  foram registradas neste documento antes da medida. Nos pontos da grade
+  (|d| = 508 e 509), fórmula e medida dão −33,2 dBFS.
+- Os extremos não estão num regime saturado: nos dois zooms houve 0 ciclos de
+  saturação. A excursão do acumulador é FS·(1+|x|) ≤ 2·FS = 65 536, contra
+  ACC_MAX = 131 071, e o laço segue a mesma regra dos centros internos.
 - Figura principal: `figs/fig6_largura_platos.png`, com a meia-largura medida
   contra FS/(OSR·P). Material de apoio: `figs/fig5_platos_tons_idle.png`, com o
   ruído e a frequência do tom contra o desvio, por centro.
@@ -159,9 +173,21 @@ platô, andando para fora, o ruído só sobe.
 
 ## e) Pior caso
 
-Na região medida (0 a 0,95·FS e os quatro zooms), o pior caso é **u = ±252**,
-na borda do platô de x = 0, com **−39,27 dBFS** (previsão: −39,27 dBFS), ou
-seja, 14,5 dB acima do modelo branco.
+**Em toda a faixa de entrada**, o pior caso é **u = 32 259**, 509 LSB abaixo
+de +1, na borda do platô de P = 1, com **−33,2 dBFS** (previsão: −33,2 dBFS),
+ou seja, 20,6 dB acima do modelo branco. A borda simétrica em −1 (u = −32 260)
+dá o mesmo valor.
+
+A validade para toda a faixa é uma inferência a partir da regra, não uma
+varredura exaustiva. P = 1 é o menor período possível, e a altura do platô na
+borda cresce quando P diminui: a raia fundamental tem amplitude ∝ ε, e a borda
+fica em ε = FS/(OSR·P). A regra foi conferida em seis centros (P = 1, 2, 3, 4,
+8). Longe das frações o ruído fica abaixo do modelo branco (panorama: mediana
+−70,3 dBFS).
+
+Excluindo os extremos de fundo de escala, o pior caso é **u = ±252**, na borda
+do platô de x = 0, com **−39,27 dBFS** (previsão: −39,27 dBFS), 14,5 dB acima
+do modelo branco.
 
 O pior ponto da grade uniforme era u = 156, com −43,4 dBFS. Esse ponto está
 dentro do mesmo platô, 100 LSB antes da borda. A diferença de 3,9 dB é o
@@ -170,24 +196,20 @@ crescimento da altura do platô entre |ε| = 156 e |ε| = 252 LSB: a previsão e
 não tinha ponto perto da borda. O teste preliminar com passo de 40 LSB indicava
 u = −240 e −39,7 dBFS; com passo de 4 LSB o valor é o acima.
 
-O platô de x = 0 é o mais alto entre os medidos porque tem o menor P: com P
-menor ele é mais largo, e a raia fundamental na borda (amplitude ∝ ε) é mais
-forte.
+A ordem das alturas de borda segue P: −33,2 dBFS (P = 1), −39,3 (P = 2),
+−42,8 (P = 3), −45,4 (P = 4) e −51,7 dBFS (P = 8).
 
-**Fora da região medida:** os extremos x = ±1 são frações com ρ = 0 ou 1,
-portanto P = 1. A regra prevê meia-largura de FS/OSR = 512 LSB e borda em
-−33,1 dBFS, 6 dB acima do pior caso medido. Isso não foi medido.
-
-O RTL foi comparado bit a bit com o golden model no pior caso (u = −252), em
-1/2 exato (16 384), no código mais próximo de 1/3 (10 923) e em −FS (−32 768):
-0 divergências e 0 overflows nos quatro (`make dc`).
+O RTL foi comparado bit a bit com o golden model no pior caso de toda a faixa
+(u = 32 259), no pior caso do platô de x = 0 (u = −252), em 1/2 exato (16 384),
+no código mais próximo de 1/3 (10 923) e em −FS (−32 768): 0 divergências e
+0 overflows nos cinco (`make dc`).
 
 ## f) O que o resultado significa
 
 O bloco não mudou. O que mudou é o conhecimento sobre ele: existe um regime de
 operação, com entrada DC ou lentamente variável próxima de frações de período
 curto, em que o ruído na banda fica acima do que a estimativa de ruído branco
-prevê, em até 14,5 dB na região medida. Esse regime agora tem localização
+prevê, em até 20,6 dB (junto aos extremos ±FS; 14,5 dB junto a x = 0). Esse regime agora tem localização
 (frações com P pequeno), largura (FS/(OSR·P)) e altura (soma das raias m·P·|ε|/2)
 previsíveis. Fora dele, e na maior parte da faixa, o ruído com DC fica abaixo do
 modelo branco.
@@ -196,11 +218,11 @@ modelo branco.
 
 ```
 # golden model (Octave 8.4 na imagem ddsm-octave:local; ver CLAUDE.md)
-tons_idle_dc      # varreduras, figs/tons_idle_dc.mat, fig4 e vetores (~11 min)
+tons_idle_dc      # varreduras, figs/tons_idle_dc.mat, fig4 e vetores (~15 min)
 figura_platos     # fig5 e fig6 a partir do .mat
 
 # RTL
-make dc           # compara os 4 vetores DC bit a bit
+make dc           # compara os 5 vetores DC bit a bit
 ```
 
 ## Próximo passo: o que fica em aberto
@@ -226,5 +248,3 @@ Se nenhuma amplitude intermediária baixar os platôs sem elevar o piso a ponto 
 anular o ganho, o resultado entra na comparação de arquiteturas: ordem mais alta
 e MASH atacam os mesmos tons por outro caminho, com um estado mais longo que
 torna o ciclo-limite menos provável.
-
-Outro item em aberto: medir o platô de x = ±1 (P = 1).

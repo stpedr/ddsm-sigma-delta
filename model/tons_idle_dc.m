@@ -5,12 +5,14 @@
 %     ATENCAO: o passo e maior que a meia-largura dos platos de tons
 %     (64 a 256 LSB), entao o panorama SUBAMOSTRA o fenomeno. Serve so de
 %     visao geral; os numeros que valem vem dos zooms.
-%  b) zooms de +/-400 LSB, passo de 4 LSB, em torno de 0, 1/4, 1/3 e 1/2:
-%     largura do plato medida por dois caminhos independentes
+%  b) zooms com passo de 4 LSB: +/-400 LSB em torno de 0, 1/4, 1/3 e 1/2, e
+%     de 0 a 1024 LSB para dentro da faixa em x = -1 e x = +1 (so ha um lado:
+%     a entrada vai de -FS a FS-1). Largura do plato medida por dois caminhos
+%     independentes
 %       - degrau do ruido na banda (snr_banda_dc.m)
 %       - ponto em que o tom idle (tom_idle.m) cruza a borda da banda
 %     e comparada com a previsao teorica.
-%  c) vetores de referencia para 4 valores DC em sim/vetores_dc_*.txt,
+%  c) vetores de referencia para valores DC em sim/vetores_dc_*.txt,
 %     comparados bit a bit com o RTL por "make dc"
 %
 %  Teoria. Com DC a saida {0,1} e uma sequencia de rotacao de densidade
@@ -56,17 +58,28 @@ u_g = unique(round(linspace(0, 0.95, M) * FS));
 x_g = u_g / FS;
 
 %% ===============================================================
-%  b) ZOOMS EM TORNO DAS FRACOES: +/-400 LSB, passo de 4 LSB
+%  b) ZOOMS EM TORNO DAS FRACOES, passo de 4 LSB
 %  ===============================================================
-c_nome = {'0', '1/4', '1/3', '1/2'};
-c_val  = [ 0,   1/4,   1/3,   1/2 ];
+%  Centros internos: +/-400 LSB em torno do codigo mais proximo da fracao.
+%  Extremos x = -1 e x = +1 (P = 1, meia-largura prevista de 512 LSB): so o
+%  lado de dentro da faixa existe; a janela vai ate 1024 LSB, o dobro da
+%  borda prevista. x = +1 nao e representavel: o zoom parte de FS-1.
+c_nome = {'0', '1/4', '1/3', '1/2', '-1', '+1'};
+c_val  = [ 0,   1/4,   1/3,   1/2,   -1,    1 ];
+u_zoom = { round(0*FS)   + (-400:4:400), ...
+           round(FS/4)   + (-400:4:400), ...
+           round(FS/3)   + (-400:4:400), ...
+           round(FS/2)   + (-400:4:400), ...
+           -FS           + (0:4:1024),   ...
+           (FS-1)        - (0:4:1024) };
 Z      = numel(c_val);
-d_z    = -400:4:400;                % deslocamento em LSB (em relacao ao codigo
-                                    % mais proximo do centro)
+if any(cellfun(@(u) any(u < -FS | u > FS-1), u_zoom))
+    error('zoom fora da faixa de entrada [-FS, FS-1]');
+end
+
 zoom = struct();
 for c = 1:Z
-    u0 = round(c_val(c) * FS);
-    u  = u0 + d_z;
+    u  = u_zoom{c};
     [snr, pn, ovf, ~, ft] = varre_dc(u, N, OSR, FS, ACC_MIN, ACC_MAX);
     [~, P] = rat((1 + c_val(c)) / 2);         % periodo do ciclo-limite
     zoom(c).nome  = c_nome{c};
@@ -90,6 +103,15 @@ end
 for c = 1:Z
     for lado = [-1 1]
         idx = find(sign(zoom(c).d) == lado);
+        if numel(idx) < 2                      % zoom de um lado so (x = +/-1)
+            borda_ruido = NaN; borda_tom = NaN;
+            if lado < 0
+                zoom(c).borda_ruido_neg = NaN; zoom(c).borda_tom_neg = NaN;
+            else
+                zoom(c).borda_ruido_pos = NaN; zoom(c).borda_tom_pos = NaN;
+            end
+            continue;
+        end
         [~, o] = sort(abs(zoom(c).d(idx)));
         idx = idx(o);                          % do centro para fora
         dd  = abs(zoom(c).d(idx));
@@ -128,7 +150,7 @@ fprintf('\n[panorama] %d codigos, passo ~%.0f LSB -- NAO resolve os platos\n', .
 fprintf('  overflows %d | max |media(y)-x| = %.2e | ruido: mediana %.1f, max %.1f dBFS\n', ...
         sum(ovf_g), max(abs(em_g)), dB(median(pn_g)), dB(max(pn_g)));
 
-fprintf('\n[zooms] +/-400 LSB, passo 4 LSB. Meia-largura do plato em LSB:\n');
+fprintf('\n[zooms] passo 4 LSB. Meia-largura do plato em LSB (NaN = lado inexistente):\n');
 fprintf('  %4s %2s %9s %17s %17s %8s %13s %13s\n', 'x', 'P', 'prevista', ...
         'ruido (-, +)', 'tom (-, +)', 'FS/4OSR', 'pico medido', 'pico previsto');
 for c = 1:Z
@@ -145,6 +167,8 @@ pn_all = [zoom.pn]; u_all = [zoom.u]; d_all = [zoom.d];
 c_all  = cell2mat(arrayfun(@(c) c*ones(size(zoom(c).u)), 1:Z, 'UniformOutput', false));
 [pn_w, iw] = max(pn_all);
 u_pior = u_all(iw);
+[~, i0] = max(zoom(1).pn);           % pior ponto do plato de x = 0
+u_pior0 = zoom(1).u(i0);
 fprintf('\n  pior caso nos zooms: u = %d (x = %.5f), %+.1f LSB de %s, ruido %.1f dBFS (%.1f dB acima do modelo branco)\n', ...
         u_pior, u_pior/FS, d_all(iw), zoom(c_all(iw)).nome, dB(pn_w), dB(pn_w) - dB(Pn_teo));
 
@@ -184,7 +208,7 @@ print(f4, '-dpng', '-r150', fullfile(dfig, 'fig4_tons_idle_panorama.png'));
 %% fig5 (zooms) e fig6 (sintese): figura_platos.m, a partir do .mat abaixo
 
 save(fullfile(dfig, 'tons_idle_dc.mat'), 'u_g', 'snr_g', 'pn_g', 'zoom', 'u_fr', ...
-     'pn_fr', 'fr_nome', 'Pn_teo', 'N', 'OSR', 'FS', 'u_pior', '-v7');
+     'pn_fr', 'fr_nome', 'Pn_teo', 'N', 'OSR', 'FS', 'u_pior', 'u_pior0', '-v7');
 
 %% ===============================================================
 %  c) VETORES DE REFERENCIA PARA O RTL
@@ -192,8 +216,12 @@ save(fullfile(dfig, 'tons_idle_dc.mat'), 'u_g', 'snr_g', 'pn_g', 'zoom', 'u_fr',
 %  pior caso real (dos zooms), 1/2 exato (ciclo-limite curto), o codigo mais
 %  proximo de 1/3 (batimento mais lento que a janela) e -FS (extremo negativo
 %  da entrada: maior extensao de sinal de din).
-u_vet  = [u_pior, FS/2, round(FS/3), -FS];
-motivo = {'pior caso dos zooms', '1/2 exato', 'mais proximo de 1/3', '-FS'};
+u_vet  = [u_pior, u_pior0, FS/2, round(FS/3), -FS];
+motivo = {'pior caso dos zooms', 'pior ponto do plato de x = 0', '1/2 exato', ...
+          'mais proximo de 1/3', '-FS'};
+[~, ia] = unique(u_vet, 'first');    % sem repetir, se os dois piores coincidirem
+ia = sort(ia);
+u_vet = u_vet(ia); motivo = motivo(ia);
 
 fprintf('\n--- c) vetores DC gravados em sim/ ---\n');
 for j = 1:numel(u_vet)

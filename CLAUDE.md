@@ -53,7 +53,7 @@ testbench fazem `` `include`` dele; o MATLAB lê com `model/le_params.m`.
 | verificação | resultado |
 |---|---|
 | `make` (senoide, 65 536 amostras) | 0 divergências, 0 overflows, densidade 0,500015 |
-| `make dc` (4 vetores DC: −252, 16384, 10923, −32768) | 4/4, 0 divergências, 0 overflows |
+| `make dc` (5 vetores DC: 32259, −252, 16384, 10923, −32768) | 5/5, 0 divergências, 0 overflows |
 | controles negativos | bit invertido detectado no índice exato; cabeçalho `W_ACC=19` recusado; arquivo ausente acusado |
 | `make lint` (Verilator 5.032 `-Wall`) | 0 avisos |
 | `make synth` (Yosys 0.52) | 260 células: 20 flip-flops `$_SDFFE_PN0P_` (18 acc + saída + ovf), 240 de lógica |
@@ -86,12 +86,18 @@ N = 2^16, OSR = 64. Modelo de ruído branco: π²/(9·OSR³) = **−53,8 dBFS** 
 | 1/4 | 8 | 64,0 | 66 / 66 | 66 / 66 | −51,7 dBFS | −51,7 dBFS |
 | 1/3 | 3 | 170,7 | 170 / 170 | 170 / 170 | −42,8 dBFS | −42,8 dBFS |
 | 1/2 | 4 | 128,0 | 130 / 130 | 130 / 130 | −45,4 dBFS | −45,4 dBFS |
+| −1 | 1 | 512,0 | — / 514 | — / 514 | −33,2 dBFS | −33,2 dBFS |
+| +1 | 1 | 512,0 | 511 / — | 511 / — | −33,2 dBFS | −33,2 dBFS |
 
-  Os zooms têm ±400 LSB e passo de 4 LSB; a resolução da borda é de ±2 LSB.
-- **Pior caso medido:** u = −252, na borda do platô de x = 0, com
-  **−39,3 dBFS**, 14,5 dB acima do modelo branco.
-- **Não medido:** em x = ±1 (P = 1), a regra prevê meia-largura de 512 LSB e
-  borda de ~−33 dBFS.
+  Passo de 4 LSB (resolução da borda ±2 LSB). Janela de ±400 LSB nos centros
+  internos e de 0 a 1024 LSB para dentro da faixa em ±1, onde só há um lado.
+  Nos extremos não há saturação (0 ciclos).
+- **Pior caso em toda a faixa:** u = 32 259 (509 LSB abaixo de +1; o simétrico
+  −32 260 dá o mesmo), com **−33,2 dBFS**, 20,6 dB acima do modelo branco.
+  "Toda a faixa" é inferência da regra: P = 1 é o menor período, e a altura de
+  borda cresce quando P diminui.
+- Sem os extremos: u = ±252, na borda do platô de x = 0, com −39,3 dBFS
+  (14,5 dB acima do modelo branco).
 - Panorama (200 códigos uniformes, passo ~156 LSB): mediana −70,3 dBFS. Essa
   grade **não resolve** os platôs; serve só como visão geral.
 
@@ -114,10 +120,9 @@ Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
      valendo com o dither ligado.
    - Se nenhuma amplitude resolver os platôs a custo aceitável em 1ª ordem com
      1 bit, documentar isso como resultado.
-2. Medir o platô de x = ±1 (P = 1).
-3. Vetores de rampa.
-4. Migrar o testbench para cocotb.
-5. Estender para ordem 2 e 3, e implementar as outras duas arquiteturas.
+2. Vetores de rampa.
+3. Migrar o testbench para cocotb.
+4. Estender para ordem 2 e 3, e implementar as outras duas arquiteturas.
 
 ## Armadilhas já identificadas
 
@@ -159,7 +164,7 @@ scripts: `pkg load signal` (para `hann`), `graphics_toolkit('gnuplot')` com
 figuras invisíveis e um substituto de `xline` fora do repo. Os scripts do
 projeto continuam MATLAB puro; em figuras novas use só `plot`/`print` (o Octave
 não tem `xline` nem `exportgraphics`) e títulos de uma linha (títulos em cell
-array quebram no gnuplot). `tons_idle_dc.m` leva ~11 min no Octave; as figuras
+array quebram no gnuplot). `tons_idle_dc.m` leva ~15 min no Octave; as figuras
 5 e 6 saem do `.mat` por `figura_platos.m`, sem refazer a simulação.
 
 ## Gestão
