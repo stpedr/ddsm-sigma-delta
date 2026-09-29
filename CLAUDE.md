@@ -27,99 +27,116 @@ MASH 1-1-1 — medida em silício num PDK aberto.
 | latência | 1 ciclo |
 | saída | 1 bit, {0,1} |
 
+`W_IN` e `GUARD` existem num único arquivo, `rtl/ddsm1_params.vh`. O RTL e o
+testbench fazem `` `include`` dele; o MATLAB lê com `model/le_params.m`.
+
 ## Estado atual
 
-Concluído:
+### Estrutura
 
-- Golden model em ponto flutuante (`model/ddsm1_snr.m`), validado contra a teoria.
-- Golden model em ponto fixo (`model/ddsm1_fixo.m`), que é a referência definitiva.
-  GUARD corrigido de 3 para 2 (W_ACC = 18), SNR inalterado. Com GUARD = 2 o
-  modelo regenera `sim/vetores_ddsm1.txt` idêntico byte a byte ao usado na
-  comparação bit a bit.
-- **Fonte única dos parâmetros:** `rtl/ddsm1_params.vh` (`DDSM1_W_IN`,
-  `DDSM1_GUARD`). O RTL e o TB fazem `` `include``; o MATLAB lê com
-  `model/le_params.m`. Nenhum outro arquivo repete esses números.
-- **Uma única implementação do laço** em `model/ddsm1.m` (antes havia uma cópia
-  em `figuras_validacao.m`). SNR da senoide em `model/snr_banda.m`.
-- Figuras de validação (`model/figuras_validacao.m`): SQNR × OSR, PSD e
-  excursão do acumulador, com as curvas teóricas sobrepostas.
-- RTL em Verilog (`rtl/ddsm1.v`).
-- Testbench de comparação bit a bit (`tb/tb_ddsm1.v`).
-- **Comparação bit a bit fechada:** 65.536 amostras, 0 divergências,
-  0 overflows, densidade de uns 0,500015. Controle negativo confirmado:
-  1 bit invertido em `yref.hex` → 1 divergência detectada em i = 999.
-- Síntese exploratória (Yosys): **260 células**, sendo 20 flip-flops
-  (`$_SDFFE_PN0P_`: 18 do acumulador + saída + ovf) e 240 de lógica.
-- Lint (Verilator `-Wall`): **zero avisos**. Os 2 `WIDTHEXPAND` da soma do
-  acumulador foram resolvidos com extensão de sinal explícita (`acc_sx`,
-  `din_sx`), em vez de depender das regras de largura de contexto do Verilog.
-  Equivalência sequencial com a versão anterior provada no Yosys (82/82
-  `$equiv`); controle negativo (din estendido com zeros) deixa sem prova
-  exatamente os bits 16–19 de `acc_ext`.
+- `rtl/ddsm1.v`: RTL, com extensão de sinal explícita na soma do acumulador
+  (`acc_sx`, `din_sx`).
+- `tb/tb_ddsm1.v`: comparação bit a bit. Lê direto `sim/vetores_*.txt`
+  (`+VEC=`), tira N do arquivo e **recusa** vetores cujo cabeçalho
+  `W_IN`/`W_ACC` difira do `.vh`.
+- `model/ddsm1.m`: **única** implementação do laço do golden model (ponto fixo).
+  `ddsm1_fixo.m` (senoide, excursão, vetores), `figuras_validacao.m`,
+  `tons_idle_dc.m` e `varre_dc.m` a chamam.
+- `model/grava_vetores.m`: único lugar que define o formato dos vetores.
+- `model/snr_banda.m` (senoide) e `model/snr_banda_dc.m` (DC) medem o SNR na
+  banda; `model/tom_idle.m` mede a frequência do tom idle;
+  `model/pn_plato_prev.m` prevê a altura dos platôs.
+- `docs/tons-idle.md`: registro técnico da caracterização dos tons idle.
+
+### Verificação (RTL × golden model)
+
+| verificação | resultado |
+|---|---|
+| `make` (senoide, 65 536 amostras) | 0 divergências, 0 overflows, densidade 0,500015 |
+| `make dc` (4 vetores DC: −252, 16384, 10923, −32768) | 4/4, 0 divergências, 0 overflows |
+| controles negativos | bit invertido detectado no índice exato; cabeçalho `W_ACC=19` recusado; arquivo ausente acusado |
+| `make lint` (Verilator 5.032 `-Wall`) | 0 avisos |
+| `make synth` (Yosys 0.52) | 260 células: 20 flip-flops `$_SDFFE_PN0P_` (18 acc + saída + ovf), 240 de lógica |
+| equivalência sequencial (Yosys `equiv_simple -seq 5` + `equiv_induct`) | provada a cada mudança de RTL; o controle negativo falha nos bits esperados |
 
 ## Resultados medidos no golden model
 
-- SNR na banda, OSR = 64, A = 0,5: **46,6 dB** (teoria prevê ~44,8 dB a -6 dBFS).
-- Varredura de OSR: 38,9 / 46,6 / 54,9 / 64,9 dB para 32 / 64 / 128 / 256.
-  Inclinação por regressão em log2(OSR): **8,63 dB/oitava** contra 9,0 teóricos
-  (desvio de 4,1%) — noise shaping de 1ª ordem confirmado.
-- Excursão do acumulador: segue exatamente `|acc|max = FS·(1+A)`, para senoide
-  e para DC, com teto absoluto em 2·FS. É a razão estrutural de o 1ª ordem ser
-  incondicionalmente estável: a realimentação de fundo de escala sempre domina
-  o estado.
-- Overflows: zero em todos os estímulos com W_ACC = 18.
+### Senoide (`ddsm1_fixo.m`, `figuras_validacao.m`)
 
-### Tons idle com entrada DC (`model/tons_idle_dc.m`, `figs/fig4_tons_idle_dc.png`)
+- SNR na banda, OSR = 64, A = 0,5: **46,6 dB** (modelo de ruído branco: 44,8 dB).
+- OSR 32 / 64 / 128 / 256: 38,9 / 46,6 / 54,9 / 64,9 dB. Inclinação por
+  regressão em log2(OSR): **8,63 dB/oitava** contra 9,0 teóricos (desvio 4,1%).
+- Excursão do acumulador: `|acc|max = FS·(1+A)` para senoide e DC, com teto em
+  2·FS (rampa: 65 535 LSB). Mínimo necessário: 17 bits; com W_ACC = 18 sobra 1
+  bit de margem. Overflows: zero em todos os estímulos.
 
-200 códigos entre 0 e 0,95·FS, N = 2^16, OSR = 64, SNR por `snr_banda_dc.m`.
-Referência: modelo de ruído branco, π²/(9·OSR³) = **−53,8 dBFS** na banda.
+### Tons idle com entrada DC (`tons_idle_dc.m`; detalhes em `docs/tons-idle.md`)
 
-- Ruído na banda: mediana **−70,3 dBFS** (16,5 dB abaixo do modelo branco);
-  só 10 de 200 pontos ficam acima do modelo; pior ponto **−43,4 dBFS**.
-- **Frações exatas são silenciosas, os tons ficam ao lado delas.** Em 1/8, 1/4,
-  1/2, 5/8, 3/4 e 7/8 exatos o ruído na banda é zero numérico (−222 a
-  −247 dBFS): o ciclo-limite é curto e as raias ficam fora da banda. Em
-  x = p/q + ε o padrão escorrega a cada ~1/ε amostras e o batimento cai na banda.
-- **Platô em torno de 1/2 com largura prevista.** Para |ε| < FS/(4·OSR) =
-  128 LSB o batimento (2ε·fs) cai na banda: ruído entre −60 e −45 dBFS, até
-  8 dB acima do modelo branco. As bordas medidas estão em ±128 LSB, e fora delas
-  o ruído cai para ~−75 dBFS.
-- Piores pontos da varredura: 156 LSB acima de 0 (SNR −3 dB), 129 LSB abaixo de
-  1/3, 115 LSB abaixo de 1/2.
-- 1/3 e 2/3 não são representáveis. O código mais próximo de 1/3 (10923) é
-  **silencioso** (−99,9 dBFS): o batimento é mais lento que a janela e vira um
-  erro de média pequeno. O pior regime fica a dezenas de LSB da fração.
-- RTL bit a bit em 4 vetores DC (`make dc`): 156 (pior caso), 16384 (1/2 exato),
-  10923 (≈1/3) e −32768 (−FS). 4/4 com 0 divergências e 0 overflows; controle
-  negativo detecta 1 bit invertido em i = 30000.
+N = 2^16, OSR = 64. Modelo de ruído branco: π²/(9·OSR³) = **−53,8 dBFS** na banda.
+
+- **Frações exatas são silenciosas na banda.** Em 1/8, 1/4, 1/2, 5/8, 3/4 e 7/8
+  exatos o ruído vai de −221,8 a −246,5 dBFS (zero numérico).
+- **Os tons ficam num platô em volta da fração**, com meia-largura
+  **FS/(OSR·P)**, onde P é o período do ciclo-limite (denominador de
+  ρ = (1+x)/2). A raia mais baixa fica em P·|ε|/2 e cai na banda dentro do platô.
+
+| centro | P | prevista [LSB] | medida, ruído (−/+) | medida, tom (−/+) | pico medido | pico previsto |
+|---|---|---|---|---|---|---|
+| 0 | 2 | 256,0 | 258 / 258 | 258 / 258 | −39,3 dBFS | −39,3 dBFS |
+| 1/4 | 8 | 64,0 | 66 / 66 | 66 / 66 | −51,7 dBFS | −51,7 dBFS |
+| 1/3 | 3 | 170,7 | 170 / 170 | 170 / 170 | −42,8 dBFS | −42,8 dBFS |
+| 1/2 | 4 | 128,0 | 130 / 130 | 130 / 130 | −45,4 dBFS | −45,4 dBFS |
+
+  Os zooms têm ±400 LSB e passo de 4 LSB; a resolução da borda é de ±2 LSB.
+- **Pior caso medido:** u = −252, na borda do platô de x = 0, com
+  **−39,3 dBFS**, 14,5 dB acima do modelo branco.
+- **Não medido:** em x = ±1 (P = 1), a regra prevê meia-largura de 512 LSB e
+  borda de ~−33 dBFS.
+- Panorama (200 códigos uniformes, passo ~156 LSB): mediana −70,3 dBFS. Essa
+  grade **não resolve** os platôs; serve só como visão geral.
+
+Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
+`figs/fig5_platos_tons_idle.png` (zooms), `figs/fig4_tons_idle_panorama.png`.
 
 ## Próximos passos
 
-1. **Dither por LFSR** (tons idle já medidos; ver acima).
-   Polinômio primitivo, amplitude de 1 LSB, injetado antes do quantizador,
-   habilitado por parâmetro `DITHER_EN`. Primeiro no MATLAB, depois no RTL,
-   com a mesma semente e a mesma sequência nos dois (equivalência bit a bit).
-   Repetir a varredura DC com dither e quantificar o trade-off: quanto os
-   vales sobem e quanto o piso médio piora. A varredura sem dither está em
-   `figs/tons_idle_dc.mat` e `varre_dc.m` é o ponto de reuso.
-2. Vetores de rampa.
-3. Migrar o testbench para cocotb.
-4. Estender para ordem 2 e 3, e implementar as outras duas arquiteturas.
+1. **Dither por LFSR: varrer a amplitude.**
+   - LFSR com polinômio primitivo, `DITHER_EN` e `DITHER_AMP` parametrizáveis,
+     injetado antes do quantizador.
+   - Amplitude em passos logarítmicos, de 1 LSB até uma fração significativa de
+     FS. 1 LSB quase nunca muda a decisão, porque o degrau do quantizador é
+     2·FS.
+   - Para cada amplitude, medir a profundidade dos platôs (com os zooms) e a
+     degradação do SNR com senoide a −6 dBFS. Entregar a curva de compromisso
+     com os dois eixos.
+   - **Requisito de aceitação:** o LFSR gera a mesma sequência, com a mesma
+     semente, no MATLAB/Octave e no Verilog, e a comparação bit a bit continua
+     valendo com o dither ligado.
+   - Se nenhuma amplitude resolver os platôs a custo aceitável em 1ª ordem com
+     1 bit, documentar isso como resultado.
+2. Medir o platô de x = ±1 (P = 1).
+3. Vetores de rampa.
+4. Migrar o testbench para cocotb.
+5. Estender para ordem 2 e 3, e implementar as outras duas arquiteturas.
 
 ## Armadilhas já identificadas
 
 - **Amostragem coerente na FFT.** O tom precisa de um número inteiro e primo de
   ciclos na janela. Sem isso o vazamento cobre o piso de ruído e o SNR sai alto
   e falso.
-- **SNR com entrada DC não tem tom.** A rotina `snr_banda` da senoide soma a
-  potência do sinal nos bins do tom (K±3); com DC o sinal está no bin 0, que
-  ela exclui da banda. Usar `snr_banda_dc.m`: sinal = x² (entrada conhecida),
-  ruído = potência de y − x na banda **incluindo o bin 0**, Hann normalizada
-  por N·Σw², soma bilateral (DC c → c², seno A → A²/2, mesma escala da senoide).
-- **Não esperar tons *nas* frações simples.** No ponto exato a saída é
-  silenciosa na banda; os tons estão num platô de ±FS/(4·OSR) em volta. Uma
-  grade grossa cai ora dentro, ora fora dele, o que dá o aspecto de "vales"
-  espalhados.
+- **SNR com entrada DC não tem tom.** `snr_banda.m` soma o sinal nos bins do
+  tom (K±3) e exclui o bin 0. Com DC use `snr_banda_dc.m`: sinal = x²; ruído =
+  potência de y − x na banda **incluindo o bin 0**; Hann normalizada por N·Σw²;
+  soma bilateral (DC c → c², seno A → A²/2).
+- **Não esperar tons *nas* frações simples.** Eles ficam num platô de
+  ±FS/(OSR·P) em volta.
+- **Grade de varredura mais grossa que o platô produz aliasing.** Use zooms com
+  passo bem menor que FS/(OSR·P) em torno das frações.
+- **Detector de borda: primeira queda (> 10 dB, andando para fora), não a
+  maior.** Fora dos platôs há pontos isolados muito silenciosos (outras frações
+  exatas) cuja queda é maior que a da borda.
+- **"Tom dominante" não é o argmax.** As harmônicas m·P·|ε|/2 têm amplitudes
+  quase iguais; `tom_idle.m` usa a raia mais baixa até 3 dB abaixo da máxima.
 - **Somar largo antes de saturar.** Se a soma acontecer já em W_ACC bits, o
   valor dá a volta antes de a saturação vê-lo, e a lógica nunca atua.
 - **Realimentação vale ±FS, não ±1 LSB.** Erro clássico na passagem de ponto
@@ -128,22 +145,22 @@ Referência: modelo de ruído branco, π²/(9·OSR³) = **−53,8 dBFS** na band
   registradores ficam em `x`.
 - **Latência de 1 ciclo** já é absorvida pelo testbench; não aplicar
   deslocamento adicional.
-- **Número duplicado em dois lugares.** Já causou dois tropeços: o `din.hex`
-  ausente (etapa manual de conversão) e o GUARD = 3 no modelo contra 2 no RTL.
-  Hoje: parâmetros só em `rtl/ddsm1_params.vh`; o TB lê `sim/vetores_*.txt`
-  direto (sem `.hex`), escolhido com `+VEC=`, e **recusa** vetores cujo
-  cabeçalho `W_IN`/`W_ACC` não bata com o `.vh`. Formato dos vetores só em
-  `model/grava_vetores.m`. Não reintroduzir cópias.
+- **Número duplicado em dois lugares.** Já causou o `din.hex` ausente e o
+  GUARD = 3 no modelo contra 2 no RTL. Parâmetros só em `rtl/ddsm1_params.vh`;
+  formato dos vetores só em `grava_vetores.m`; laço só em `ddsm1.m`. Não
+  reintroduzir cópias.
 
 ## Rodar o golden model sem MATLAB
 
 Não há MATLAB na máquina de desenvolvimento. Os `.m` rodam sem alteração no
 Octave 8.4 da imagem Docker local `ddsm-octave:local` (Ubuntu 24.04 + `octave`,
-`octave-signal`, `gnuplot-nox`, `fonts-freefont-otf`). Antes dos scripts:
-`pkg load signal` (para `hann`), `graphics_toolkit('gnuplot')` com figuras
-invisíveis e um substituto de `xline` fora do repo. Os scripts do projeto
-continuam MATLAB puro; use só `plot`/`print` em figuras novas (Octave não tem
-`xline` nem `exportgraphics`).
+`octave-signal`, `gnuplot-nox`, `fonts-freefont-otf`, `ghostscript`). Antes dos
+scripts: `pkg load signal` (para `hann`), `graphics_toolkit('gnuplot')` com
+figuras invisíveis e um substituto de `xline` fora do repo. Os scripts do
+projeto continuam MATLAB puro; em figuras novas use só `plot`/`print` (o Octave
+não tem `xline` nem `exportgraphics`) e títulos de uma linha (títulos em cell
+array quebram no gnuplot). `tons_idle_dc.m` leva ~11 min no Octave; as figuras
+5 e 6 saem do `.mat` por `figura_platos.m`, sem refazer a simulação.
 
 ## Gestão
 
