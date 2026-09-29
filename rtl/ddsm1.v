@@ -38,8 +38,13 @@ module ddsm1 #(
     // Realimentacao: um mux entre duas constantes. No modelo, yfb = +/- FS.
     wire signed [W_EXT-1:0] fb = y_r ? FS : -FS;
 
+    // Extensao de sinal explicita para W_EXT, sem depender das regras de
+    // largura de contexto do Verilog (que variam sutilmente entre ferramentas).
+    wire signed [W_EXT-1:0] acc_sx = {{(W_EXT-W_ACC){acc[W_ACC-1]}}, acc};
+    wire signed [W_EXT-1:0] din_sx = {{(W_EXT-W_IN){din[W_IN-1]}},   din};
+
     // Soma na largura estendida, para so entao decidir sobre saturacao.
-    wire signed [W_EXT-1:0] acc_ext = $signed(acc) + $signed(din) - fb;
+    wire signed [W_EXT-1:0] acc_ext = acc_sx + din_sx - fb;
 
     wire sat_hi = (acc_ext > ACC_MAX);
     wire sat_lo = (acc_ext < ACC_MIN);
