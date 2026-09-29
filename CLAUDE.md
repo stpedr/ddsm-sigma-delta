@@ -69,22 +69,42 @@ Concluído:
   o estado.
 - Overflows: zero em todos os estímulos com W_ACC = 18.
 
+### Tons idle com entrada DC (`model/tons_idle_dc.m`, `figs/fig4_tons_idle_dc.png`)
+
+200 códigos entre 0 e 0,95·FS, N = 2^16, OSR = 64, SNR por `snr_banda_dc.m`.
+Referência: modelo de ruído branco, π²/(9·OSR³) = **−53,8 dBFS** na banda.
+
+- Ruído na banda: mediana **−70,3 dBFS** (16,5 dB abaixo do modelo branco);
+  só 10 de 200 pontos ficam acima do modelo; pior ponto **−43,4 dBFS**.
+- **Frações exatas são silenciosas, os tons ficam ao lado delas.** Em 1/8, 1/4,
+  1/2, 5/8, 3/4 e 7/8 exatos o ruído na banda é zero numérico (−222 a
+  −247 dBFS): o ciclo-limite é curto e as raias ficam fora da banda. Em
+  x = p/q + ε o padrão escorrega a cada ~1/ε amostras e o batimento cai na banda.
+- **Platô em torno de 1/2 com largura prevista.** Para |ε| < FS/(4·OSR) =
+  128 LSB o batimento (2ε·fs) cai na banda: ruído entre −60 e −45 dBFS, até
+  8 dB acima do modelo branco. As bordas medidas estão em ±128 LSB, e fora delas
+  o ruído cai para ~−75 dBFS.
+- Piores pontos da varredura: 156 LSB acima de 0 (SNR −3 dB), 129 LSB abaixo de
+  1/3, 115 LSB abaixo de 1/2.
+- 1/3 e 2/3 não são representáveis. O código mais próximo de 1/3 (10923) é
+  **silencioso** (−99,9 dBFS): o batimento é mais lento que a janela e vira um
+  erro de média pequeno. O pior regime fica a dezenas de LSB da fração.
+- RTL bit a bit em 4 vetores DC (`make dc`): 156 (pior caso), 16384 (1/2 exato),
+  10923 (≈1/3) e −32768 (−FS). 4/4 com 0 divergências e 0 overflows; controle
+  negativo detecta 1 bit invertido em i = 30000.
+
 ## Próximos passos
 
-1. **Tons idle com entrada DC.** Varrer ~200 valores DC entre 0 e 0,95·FS no
-   golden model, medir SNR na banda em cada um e plotar SNR × DC (esperados
-   vales em frações racionais simples: 1/2, 1/4, 1/3). Exportar vetores para
-   3–4 valores DC, incluindo um pior caso, e fechar a comparação bit a bit
-   do RTL também nesse regime.
-2. **Dither por LFSR** (só depois de 1, para ter o antes e depois).
+1. **Dither por LFSR** (tons idle já medidos; ver acima).
    Polinômio primitivo, amplitude de 1 LSB, injetado antes do quantizador,
    habilitado por parâmetro `DITHER_EN`. Primeiro no MATLAB, depois no RTL,
    com a mesma semente e a mesma sequência nos dois (equivalência bit a bit).
    Repetir a varredura DC com dither e quantificar o trade-off: quanto os
-   vales sobem e quanto o piso médio piora.
-3. Vetores de rampa.
-4. Migrar o testbench para cocotb.
-5. Estender para ordem 2 e 3, e implementar as outras duas arquiteturas.
+   vales sobem e quanto o piso médio piora. A varredura sem dither está em
+   `figs/tons_idle_dc.mat` e `varre_dc.m` é o ponto de reuso.
+2. Vetores de rampa.
+3. Migrar o testbench para cocotb.
+4. Estender para ordem 2 e 3, e implementar as outras duas arquiteturas.
 
 ## Armadilhas já identificadas
 
@@ -93,7 +113,13 @@ Concluído:
   e falso.
 - **SNR com entrada DC não tem tom.** A rotina `snr_banda` da senoide soma a
   potência do sinal nos bins do tom (K±3); com DC o sinal está no bin 0, que
-  ela exclui da banda. Adaptar a medida, não reusar a função sem pensar.
+  ela exclui da banda. Usar `snr_banda_dc.m`: sinal = x² (entrada conhecida),
+  ruído = potência de y − x na banda **incluindo o bin 0**, Hann normalizada
+  por N·Σw², soma bilateral (DC c → c², seno A → A²/2, mesma escala da senoide).
+- **Não esperar tons *nas* frações simples.** No ponto exato a saída é
+  silenciosa na banda; os tons estão num platô de ±FS/(4·OSR) em volta. Uma
+  grade grossa cai ora dentro, ora fora dele, o que dá o aspecto de "vales"
+  espalhados.
 - **Somar largo antes de saturar.** Se a soma acontecer já em W_ACC bits, o
   valor dá a volta antes de a saturação vê-lo, e a lógica nunca atua.
 - **Realimentação vale ±FS, não ±1 LSB.** Erro clássico na passagem de ponto
