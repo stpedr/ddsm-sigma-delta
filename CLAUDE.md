@@ -157,14 +157,27 @@ Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
 ## Rodar o golden model sem MATLAB
 
 Não há MATLAB na máquina de desenvolvimento. Os `.m` rodam sem alteração no
-Octave 8.4 da imagem Docker local `ddsm-octave:local` (Ubuntu 24.04 + `octave`,
-`octave-signal`, `gnuplot-nox`, `fonts-freefont-otf`, `ghostscript`). Antes dos
-scripts: `pkg load signal` (para `hann`), `graphics_toolkit('gnuplot')` com
-figuras invisíveis e um substituto de `xline` fora do repo. Os scripts do
-projeto continuam MATLAB puro; em figuras novas use só `plot`/`print` (o Octave
-não tem `xline` nem `exportgraphics`) e títulos de uma linha (títulos em cell
-array quebram no gnuplot). `tons_idle_dc.m` leva ~15 min no Octave; as figuras
-5 e 6 saem do `.mat` por `figura_platos.m`, sem refazer a simulação.
+Octave 8.4, numa imagem Docker construída a partir do repo:
+
+- `env/Dockerfile`: Ubuntu 24.04 com `octave` e `octave-signal` em versões
+  fixas, mais gnuplot, ghostscript e fontes. `make imagem-octave` constrói a
+  imagem `ddsm-octave:local`. As versões usadas nas medidas registradas estão
+  em `env/versoes.txt`.
+- `env/octave.sh <comando>`: roda um comando na imagem, com o repo montado em
+  `/work` e diretório de trabalho `model/`. Antes do comando, carrega
+  `env/octave/octave_init.m` (`pkg load signal` para `hann`, gnuplot sem
+  display e o substituto de `xline` em `env/octave/`).
+- Os scripts do projeto continuam MATLAB puro. `env/octave/` só entra no path
+  do Octave. Em figuras novas, use só `plot`/`print` (o Octave não tem `xline`
+  nem `exportgraphics`) e títulos de uma linha (títulos em cell array quebram
+  no gnuplot).
+- `tons_idle_dc.m` leva ~15 min. As figuras 5 e 6 saem do `.mat` por
+  `figura_platos.m`, sem refazer a simulação.
+- **Cópia de trabalho no WSL:** o WSL não monta o disco C:. Os comandos rodam
+  em `~/CI/ddsm-sigma-delta`, recriada com
+  `git -c core.autocrlf=false archive HEAD | tar -x` a partir do repo, mais os
+  arquivos em edição. Não editar lá: ela não é um clone, e o que for mudado
+  nela se perde.
 
 ## Gestão
 

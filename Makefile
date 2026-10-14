@@ -6,6 +6,10 @@
 # make synth    -> sintese exploratoria com Yosys (contagem de celulas)
 # make wave     -> abre as formas de onda no GTKWave
 # make clean
+#
+# Golden model (Octave, sem MATLAB):
+# make imagem-octave        -> constroi a imagem ddsm-octave:local (env/Dockerfile)
+# env/octave.sh <comando>   -> roda um script de model/ na imagem
 
 RTL   := rtl/ddsm1.v
 PARAMS:= rtl/ddsm1_params.vh
@@ -14,7 +18,7 @@ TB    := tb/tb_ddsm1.v
 SIM   := sim/sim
 VCD   := sim/tb_ddsm1.vcd
 
-.PHONY: all run dc lint synth wave clean
+.PHONY: all run dc lint synth wave clean imagem-octave
 
 all: run
 
@@ -41,6 +45,9 @@ dc: $(SIM)
 
 lint:
 	verilator --lint-only -Wall $(INC) $(RTL)
+
+imagem-octave:
+	docker build -t ddsm-octave:local env
 
 synth:
 	yosys -p "read_verilog $(INC) $(RTL); synth -top ddsm1; stat"

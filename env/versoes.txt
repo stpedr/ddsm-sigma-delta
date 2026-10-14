@@ -1,0 +1,8 @@
+# Imagem ddsm-octave:local usada nas medidas registradas ate 2026-10-13
+# (docs/tons-idle.md, docs/ddsm2-cifb.md). Ubuntu 24.04.5 LTS.
+octave=8.4.0-1build5            # GNU Octave 8.4.0
+octave-signal=1.4.5-2           # pkg signal 1.4.5 (hann)
+gnuplot-nox=6.0.0+dfsg1-1ubuntu3
+ghostscript=10.02.1~dfsg1-0ubuntu7.9
+fonts-freefont-otf=20211204+svn4273-2
+fonts-dejavu-core=2.37-8

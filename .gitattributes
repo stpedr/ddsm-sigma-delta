@@ -1,0 +1,12 @@
+# Arquivos executados no Linux/WSL: LF sempre, mesmo em checkout no Windows.
+*.sh        text eol=lf
+Makefile    text eol=lf
+Dockerfile  text eol=lf
+*.v         text eol=lf
+*.vh        text eol=lf
+*.m         text eol=lf
+*.txt       text eol=lf
+*.md        text eol=lf
+*.png       binary
+*.pdf       binary
+*.mat       binary

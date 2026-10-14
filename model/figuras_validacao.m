@@ -6,13 +6,15 @@
 %  Fig. 2 — densidade espectral, contra a reta de 20 dB/decada
 %  Fig. 3 — excursao do acumulador, contra a reta FS*(1+A)
 %
-%  Salva PNG (300 dpi) e PDF vetorial em figs/.
+%  Salva PNG (300 dpi) e PDF vetorial em figs/ (na raiz do repo).
+%  Usa print, e nao exportgraphics, para rodar tambem no Octave (env/octave.sh).
 %  Rode DEPOIS de ddsm1_fixo.m (precisa de u, y, W_IN, FS, N, K no workspace).
 
 if ~exist('y','var') || ~exist('FS','var')
     error('Rode ddsm1_fixo.m primeiro.');
 end
-if ~exist('figs','dir'), mkdir('figs'); end
+dfig = fullfile(fileparts(mfilename('fullpath')), '..', 'figs');
+if ~exist(dfig,'dir'), mkdir(dfig); end
 
 LW = 1.4;  MS = 7;  FSZ = 11;   % espessura, marcador, fonte
 
@@ -55,8 +57,9 @@ legend({'teorico: 9 dB/oitava', ...
        'Location','northwest','FontSize',FSZ-1);
 xlim([24 340]);
 
-exportgraphics(f1,'figs/fig1_sqnr_osr.png','Resolution',300);
-exportgraphics(f1,'figs/fig1_sqnr_osr.pdf','ContentType','vector');
+set(f1,'PaperUnits','inches','PaperPosition',[0 0 5.6 4.2]);
+print(f1,'-dpng','-r300',fullfile(dfig,'fig1_sqnr_osr.png'));
+print(f1,'-dpdf',fullfile(dfig,'fig1_sqnr_osr.pdf'));
 
 %% ===============================================================
 %  FIG. 2 — DENSIDADE ESPECTRAL
@@ -88,8 +91,9 @@ legend({'PSD da saida','referencia: 20 dB/decada', ...
        'Location','northwest','FontSize',FSZ-1);
 ylim([-140 5]);
 
-exportgraphics(f2,'figs/fig2_psd.png','Resolution',300);
-exportgraphics(f2,'figs/fig2_psd.pdf','ContentType','vector');
+set(f2,'PaperUnits','inches','PaperPosition',[0 0 6.2 4.2]);
+print(f2,'-dpng','-r300',fullfile(dfig,'fig2_psd.png'));
+print(f2,'-dpdf',fullfile(dfig,'fig2_psd.pdf'));
 
 %% ===============================================================
 %  FIG. 3 — EXCURSAO DO ACUMULADOR
@@ -132,8 +136,9 @@ legend({'teorico: 1 + A','entrada senoidal','entrada DC', ...
         'teto absoluto: 2 x FS'}, 'Location','northwest','FontSize',FSZ-1);
 xlim([0 1.02]); ylim([0.9 2.2]);
 
-exportgraphics(f3,'figs/fig3_acc.png','Resolution',300);
-exportgraphics(f3,'figs/fig3_acc.pdf','ContentType','vector');
+set(f3,'PaperUnits','inches','PaperPosition',[0 0 5.6 4.2]);
+print(f3,'-dpng','-r300',fullfile(dfig,'fig3_acc.png'));
+print(f3,'-dpdf',fullfile(dfig,'fig3_acc.pdf'));
 
 %% ===============================================================
 %  RESUMO NUMERICO
