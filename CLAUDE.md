@@ -48,6 +48,19 @@ testbench fazem `` `include`` dele; o MATLAB lê com `model/le_params.m`.
   `model/pn_plato_prev.m` prevê a altura dos platôs.
 - `docs/tons-idle.md`: registro técnico da caracterização dos tons idle.
 
+### 2ª ordem (CIFB, Boser-Wooley), em andamento — `docs/ddsm2-cifb.md`
+
+- Etapas 1 e 2 concluídas: estrutura, NTF (1 − z⁻¹)², contrato separado em
+  `rtl/ddsm2_params.vh`, modelos `model/ddsm2_flut.m` (ganhos 0,5) e
+  `model/ddsm2.m` (forma inteira, **única** implementação do laço em ponto fixo).
+  Ponto fixo e ponto flutuante têm 0 divergências; latência de 2 ciclos.
+- **⚠ PENDÊNCIA ABERTA: `DDSM2_W_I1` e `DDSM2_W_I2` (32 bits) são PROVISÓRIOS.**
+  Fechá-los na etapa 3 com a excursão medida, e decidir então a saturação. Até
+  lá o modelo não satura: estouro é **alarme**, reportado como resultado (laço
+  divergiu), nunca absorvido aumentando a largura.
+- `le_params('ddsm2')` lê o contrato da 2ª ordem; `le_params()` continua
+  lendo o da 1ª.
+
 ### Verificação (RTL × golden model)
 
 | verificação | resultado |
@@ -112,8 +125,8 @@ Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
 
 1. **Modulador de 2ª ordem (CIFB, Boser-Wooley)**, verificado com o mesmo rigor
    da 1ª ordem e comparado diretamente com ela. Etapas, com parada ao fim de
-   cada uma: (1) estrutura, coeficientes e NTF; (2) modelo em ponto flutuante e
-   depois em ponto fixo, com contrato **novo e separado** em `rtl/ddsm2_params.vh`;
+   cada uma: (1) estrutura, coeficientes e NTF [feito]; (2) modelo em ponto flutuante e
+   depois em ponto fixo, com contrato **novo e separado** em `rtl/ddsm2_params.vh` [feito; larguras provisórias];
    (3) campanha de estabilidade: excursão **medida** de cada integrador,
    ponto de sobrecarga, estado travado; (4) RTL com core comum e filtro de laço
    trocável, e verificação bit a bit com controle negativo; (5) as mesmas

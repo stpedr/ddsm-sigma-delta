@@ -7,7 +7,7 @@ não muda.
 | etapa | situação |
 |---|---|
 | 1. Estrutura, coeficientes e NTF | concluída (seção 1) |
-| 2. Modelo em ponto flutuante e em ponto fixo, contrato `rtl/ddsm2_params.vh` | pendente |
+| 2. Modelo em ponto flutuante e em ponto fixo, contrato `rtl/ddsm2_params.vh` | concluída (seção 2); larguras PROVISÓRIAS |
 | 3. Campanha de estabilidade | pendente |
 | 4. RTL com core comum e verificação bit a bit | pendente |
 | 5. Comparação com a 1ª ordem | pendente |
@@ -74,8 +74,8 @@ a etapa 5 mede o que ele de fato faz.
 
 **Latência:** a STF é z⁻². A entrada aparece na saída com 2 amostras de atraso
 no modelo, contra 0 na forma de `ddsm1.m`, cujo integrador não tem atraso. O RTL
-da 1ª ordem acrescenta 1 ciclo de registro de saída. A latência do contrato da
-2ª ordem será declarada na etapa 2.
+da 1ª ordem acrescenta 1 ciclo de registro de saída. A latência medida no
+contrato da 2ª ordem é de 2 ciclos de clock (seção 2).
 
 ### Previsões do modelo de ruído branco (OSR = 64)
 
@@ -128,6 +128,82 @@ conferidos antes de entrar no texto do trabalho. A forma inteira (1, 1, 1, 2) e
 a equivalência com os ganhos 0,5 não dependem das referências; estão derivadas
 acima e verificadas pelo script. A delsig toolbox não foi usada.
 
-Os coeficientes estão escritos em `model/ddsm2_ntf.m` só para esta verificação.
-Na etapa 2 eles passam para `rtl/ddsm2_params.vh`, fonte única, e o script
-passa a lê-los de lá.
+Desde a etapa 2, os coeficientes ficam só em `rtl/ddsm2_params.vh`, e
+`model/ddsm2_ntf.m` os lê de lá.
+
+## 2. Modelo em ponto flutuante e em ponto fixo
+
+### Contrato (`rtl/ddsm2_params.vh`, separado do da 1ª ordem)
+
+| parâmetro | valor | situação |
+|---|---|---|
+| `W_IN` | 16 bits, com sinal; FS = 2^15 | definido |
+| coeficientes B1, A1, C1, A2 | 1, 1, 1, 2 | definido |
+| realimentação | ±FS (A1·FS no integrador 1, A2·FS no 2) | definido |
+| saída | 1 bit, {0,1}; registro `y_r` = (w2 ≥ 0) após a atualização | definido |
+| reset | w1 = w2 = 0, `y_r` = 0 (realimenta −FS no primeiro ciclo) | definido |
+| latência | 2 ciclos (medida; ver abaixo) | definido |
+| `W_I1`, `W_I2` | 32 bits cada | **PROVISÓRIO**, fechar na etapa 3 |
+| saturação | nenhuma no modelo; estouro só gera alarme | **a decidir** na etapa 3 |
+
+As larguras provisórias são largas de propósito, para observar a excursão
+**natural** do laço. Saturar antes de medir faria a saturação realimentar e
+alterar a dinâmica que se quer caracterizar. Se um integrador sair dessa faixa,
+o modelo **não corrige**: conta e reporta como alarme, e isso é resultado da
+etapa 3 (o laço divergiu), não motivo para alargar mais.
+
+### Modelos
+
+- `model/ddsm2_flut.m`: ponto flutuante, na forma da literatura, com ganhos 0,5.
+- `model/ddsm2.m`: ponto fixo na forma inteira, **única** implementação do laço
+  de 2ª ordem em ponto fixo. Os integradores são livres (aritmética exata em
+  double até 2^53), devolve a excursão de cada integrador e conta os ciclos fora
+  das larguras provisórias.
+- `model/ddsm2_fixo.m`: as verificações abaixo.
+
+Os dois usam a mesma convenção de registro da 1ª ordem (`ddsm1.m` e
+`rtl/ddsm1.v`), para o core do RTL poder ser comum na etapa 4:
+
+```
+fb  = +FS se y_r = 1, −FS se y_r = 0
+w1 ← w1 + B1·u  − A1·fb
+w2 ← w2 + C1·w1 − A2·fb        (w1 ANTES da atualização)
+y_r ← (w2 ≥ 0)                 (w2 DEPOIS da atualização)
+```
+
+### Verificação (senoide A = 0,5, K = 41, N = 2^16, OSR = 64)
+
+| verificação | resultado |
+|---|---|
+| ponto fixo × ponto flutuante, mesma entrada quantizada | **0 divergências** em 65 536 amostras |
+| SNR, ponto flutuante (entrada não quantizada) | 70,2 dB |
+| SNR, ponto fixo | 70,7 dB |
+| SNR, modelo de ruído branco | 73,2 dB |
+| piso da própria medida (SNR da senoide ideal pela mesma rotina) | 116,0 dB |
+| atraso pela fase do tom (amostras do modelo) | 1ª ordem −0,031; 2ª ordem 0,969 |
+| latência em ciclos (+1 do registro de saída) | 1ª ordem 1; 2ª ordem **2** |
+| controle do alarme (larguras de 16 bits de propósito) | dispara em i = 1; saída idêntica à da execução larga |
+| regressão da 1ª ordem (`le_params()` e `ddsm1_fixo`) | parâmetros e `vetores_ddsm1.txt` inalterados |
+
+- **Equivalência entre forma inteira e ganhos 0,5:** a forma inteira (1, 1, 1, 2)
+  e o laço com ganhos 0,5 tomam as mesmas decisões em todas as amostras. Isso
+  confirma por medida a equivalência derivada na seção 1.
+- **SNR 2,5 a 3 dB abaixo do modelo branco.** Na 1ª ordem a medida ficou 1,8 dB
+  *acima* do modelo. O modelo branco com k = 1 é só uma referência; a diferença é
+  um dado a acompanhar na etapa 5 (SQNR × OSR e espectro), não um defeito. O piso
+  da medida, em 116 dB, está 45 dB abaixo, então a janela não limita o valor
+  medido.
+- **Latência:** o atraso medido é de 1 amostra a mais que na 1ª ordem, com o
+  mesmo deslocamento fracionário (−0,03) nas duas, que vem da própria medida de
+  fase. A STF z⁻² da seção 1 corresponde a 2 ciclos de clock entre a entrada e a
+  saída registrada.
+
+### Excursão neste estímulo (só informativa; a campanha é a etapa 3)
+
+| integrador | faixa | em FS | largura mínima |
+|---|---|---|---|
+| w1 | [−87 666, 88 342] | [−2,68, 2,70] | 18 bits |
+| w2 | [−129 927, 133 222] | [−3,97, 4,07] | 19 bits |
+
+Na 1ª ordem, o mesmo estímulo deu |acc|max = 1,50·FS. A regra FS·(1+A) da 1ª
+ordem não se aplica aqui. A etapa 3 mede a excursão em toda a faixa de entrada.

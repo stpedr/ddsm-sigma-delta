@@ -17,14 +17,14 @@
 %  Para um quantizador de 1 bit k nao e definido; k = 1 e uma convencao do
 %  modelo linear, e a etapa 5 mede o que o laco real faz.
 %
-%  Coeficientes AQUI so para esta verificacao. Na etapa 2 eles passam para
-%  rtl/ddsm2_params.vh, fonte unica, e este script passa a le-los de la.
+%  Coeficientes lidos de rtl/ddsm2_params.vh (fonte unica).
 %
 %  Saida: figs/fig10_ntf_ordem1x2.png
 
 clear; close all;
 
-B1 = 1; A1 = 1; C1 = 1; A2 = 2;   % ver cabecalho
+P2 = le_params('ddsm2');
+B1 = P2.B1; A1 = P2.A1; C1 = P2.C1; A2 = P2.A2;
 OSR = 64;
 L = 16;                            % amostras das respostas ao impulso
 
