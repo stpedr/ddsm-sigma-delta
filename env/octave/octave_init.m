@@ -3,7 +3,7 @@
 %
 %   - pkg signal: hann() com a mesma definicao do MATLAB (simetrica)
 %   - gnuplot, figuras invisiveis: renderizacao sem display
-%   - esta pasta no path: substituto de xline (o Octave 8.4 nao tem xline).
+%   - esta pasta no path: substitutos de xline e yline (o Octave 8.4 nao tem).
 %     So entra no path do Octave; no MATLAB vale o xline nativo.
 pkg load signal;
 addpath(fileparts(mfilename('fullpath')));

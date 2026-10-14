@@ -66,9 +66,13 @@ testbench fazem `` `include`` dele; o MATLAB lê com `model/le_params.m`.
 - SNR na banda, OSR = 64, A = 0,5: **46,6 dB** (modelo de ruído branco: 44,8 dB).
 - OSR 32 / 64 / 128 / 256: 38,9 / 46,6 / 54,9 / 64,9 dB. Inclinação por
   regressão em log2(OSR): **8,63 dB/oitava** contra 9,0 teóricos (desvio 4,1%).
-- Excursão do acumulador: `|acc|max = FS·(1+A)` para senoide e DC, com teto em
-  2·FS (rampa: 65 535 LSB). Mínimo necessário: 17 bits; com W_ACC = 18 sobra 1
-  bit de margem. Overflows: zero em todos os estímulos.
+- Excursão do acumulador: `|acc|max ≈ FS·(1+A)` para senoide e DC, com teto em
+  2·FS (rampa: 65 535 LSB). Desvio máximo da fórmula: 74,6 LSB (0,12%) com
+  senoide, porque as amostras do seno não caem exatamente no pico; ≤ 1 LSB com
+  DC (arredondamento de d·(FS−1)). Mínimo necessário: 17 bits; com W_ACC = 18
+  sobra 1 bit de margem. Overflows: zero em todos os estímulos.
+- Esses números foram medidos primeiro no MATLAB e **reproduzidos no Octave**
+  (`env/`) a partir de um checkout limpo e de uma imagem reconstruída do zero.
 
 ### Tons idle com entrada DC (`tons_idle_dc.m`; detalhes em `docs/tons-idle.md`)
 
@@ -166,10 +170,10 @@ Octave 8.4, numa imagem Docker construída a partir do repo:
 - `env/octave.sh <comando>`: roda um comando na imagem, com o repo montado em
   `/work` e diretório de trabalho `model/`. Antes do comando, carrega
   `env/octave/octave_init.m` (`pkg load signal` para `hann`, gnuplot sem
-  display e o substituto de `xline` em `env/octave/`).
+  display e os substitutos de `xline` e `yline` em `env/octave/`).
 - Os scripts do projeto continuam MATLAB puro. `env/octave/` só entra no path
   do Octave. Em figuras novas, use só `plot`/`print` (o Octave não tem `xline`
-  nem `exportgraphics`) e títulos de uma linha (títulos em cell array quebram
+  nem `yline` nem `exportgraphics`) e títulos de uma linha (títulos em cell array quebram
   no gnuplot).
 - `tons_idle_dc.m` leva ~15 min. As figuras 5 e 6 saem do `.mat` por
   `figura_platos.m`, sem refazer a simulação.
