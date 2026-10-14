@@ -43,8 +43,9 @@ end
 f6 = figure('Color', 'w', 'Position', [100 100 560 460]);
 wmax = 600;
 plot([0 wmax], [0 wmax], '--', 'LineWidth', LW, 'Color', cor_cin); hold on;
-plot(w_teo, w_ruid, 'o', 'LineWidth', LW, 'MarkerSize', MS + 3, ...
-     'Color', cor_med, 'MarkerFaceColor', 'w');
+% Sem MarkerFaceColor: com preenchimento branco o gnuplot (Octave) desenha o
+% marcador da legenda so com o preenchimento, e ele some contra o fundo.
+plot(w_teo, w_ruid, 'o', 'LineWidth', LW, 'MarkerSize', MS + 3, 'Color', cor_med);
 plot(w_teo, w_tom, 'x', 'LineWidth', LW, 'MarkerSize', MS + 1, 'Color', cor_teo);
 for c = 1:Z
     dy = -28;

@@ -119,9 +119,9 @@ de ±2 LSB.
 
 - Os dois métodos dão o mesmo valor nos 10 lados medidos. Nos centros de código
   inteiro a medida fica 2 LSB acima da previsão, por construção; em +1 a grade
-  está deslocada de 1 LSB (d = −1, −5, …), e a medida fica 1 LSB abaixo. No ponto exatamente
-  sobre a borda prevista, a raia está sobre a borda da banda e ainda é contada
-  em parte: em x = 0, d = 256 dá −46,9 dBFS e d = 260 dá −75,1 dBFS. A borda
+  está deslocada de 1 LSB (d = −1, −5, …), e a medida fica 1 LSB abaixo. No
+  ponto exatamente sobre a borda prevista, a raia está sobre a borda da banda e
+  ainda é contada em parte: em x = 0, d = 256 dá −46,9 dBFS e d = 260 dá −75,1 dBFS. A borda
   real está, portanto, no intervalo (256, 260], e o ponto médio é 258.
 - "Pico medido" é o máximo do ruído na banda sobre os pontos da grade dentro
   do platô previsto; "pico previsto" é o máximo da fórmula nos mesmos pontos.
@@ -144,9 +144,10 @@ de ±2 LSB.
 ## d) Erro de método corrigido: aliasing da grade de varredura
 
 A primeira varredura usou 200 códigos uniformes entre 0 e 0,95·FS, com passo
-médio de 156,4 LSB. As meias-larguras dos platôs vão de 64 a 256 LSB. O passo é
-maior que várias delas, então cada platô recebe no máximo dois pontos da grade,
-em posições arbitrárias:
+médio de 156,4 LSB. Dentro dessa faixa, as meias-larguras dos platôs medidos vão
+de 64 LSB (x = 1/4) a 256 LSB (x = 0). Os platôs de ±1, com 512 LSB, ficam
+fora dela. O passo é maior que várias dessas meias-larguras, então cada platô
+recebe no máximo dois pontos da grade, em posições arbitrárias:
 
 | platô | pontos da grade dentro dele |
 |---|---|
@@ -209,9 +210,9 @@ no código mais próximo de 1/3 (10 923) e em −FS (−32 768): 0 divergências
 O bloco não mudou. O que mudou é o conhecimento sobre ele: existe um regime de
 operação, com entrada DC ou lentamente variável próxima de frações de período
 curto, em que o ruído na banda fica acima do que a estimativa de ruído branco
-prevê, em até 20,6 dB (junto aos extremos ±FS; 14,5 dB junto a x = 0). Esse regime agora tem localização
-(frações com P pequeno), largura (FS/(OSR·P)) e altura (soma das raias m·P·|ε|/2)
-previsíveis. Fora dele, e na maior parte da faixa, o ruído com DC fica abaixo do
+prevê, em até 20,6 dB junto aos extremos ±FS e 14,5 dB junto a x = 0. Esse
+regime agora tem localização (frações com P pequeno), largura (FS/(OSR·P)) e
+altura (soma das raias m·P·|ε|/2) previsíveis. Fora dele, e na maior parte da faixa, o ruído com DC fica abaixo do
 modelo branco.
 
 ## Reprodução

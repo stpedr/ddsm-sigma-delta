@@ -134,7 +134,7 @@ Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
   potência de y − x na banda **incluindo o bin 0**; Hann normalizada por N·Σw²;
   soma bilateral (DC c → c², seno A → A²/2).
 - **Não esperar tons *nas* frações simples.** Eles ficam num platô de
-  ±FS/(OSR·P) em volta.
+  ±FS/(OSR·P) em volta: 64 a 512 LSB para P = 8 a 1.
 - **Grade de varredura mais grossa que o platô produz aliasing.** Use zooms com
   passo bem menor que FS/(OSR·P) em torno das frações.
 - **Detector de borda: primeira queda (> 10 dB, andando para fora), não a
