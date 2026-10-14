@@ -109,7 +109,7 @@ Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
 1. **Modulador de 2ª ordem (CIFB, Boser-Wooley)**, verificado com o mesmo rigor
    da 1ª ordem e comparado diretamente com ela. Etapas, com parada ao fim de
    cada uma: (1) estrutura, coeficientes e NTF; (2) modelo em ponto flutuante e
-   depois em ponto fixo, com contrato **novo e separado** em ;
+   depois em ponto fixo, com contrato **novo e separado** em `rtl/ddsm2_params.vh`;
    (3) campanha de estabilidade: excursão **medida** de cada integrador,
    ponto de sobrecarga, estado travado; (4) RTL com core comum e filtro de laço
    trocável, e verificação bit a bit com controle negativo; (5) as mesmas
@@ -121,7 +121,7 @@ Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
    MASH 1-1-1).
 
 **Arquivado:** dither por LFSR. A varredura de amplitude é questão em aberto
-(), e o código está no branch local .
+(`docs/tons-idle.md`), e o código está no branch local `arquivo/dither-lfsr`.
 
 ## Armadilhas já identificadas
 
