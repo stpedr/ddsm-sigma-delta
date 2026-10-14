@@ -226,15 +226,21 @@ figura_platos     # fig5 e fig6 a partir do .mat
 make dc           # compara os 5 vetores DC bit a bit
 ```
 
-## Próximo passo: o que fica em aberto
+## Questão em aberto: dither
 
 **Pergunta:** existe amplitude de dither que dissolva os platôs a custo
 aceitável neste modulador?
 
-A resposta vai sair da varredura de amplitude, com duas medidas por amplitude:
-a profundidade dos platôs (nos mesmos zooms) e a degradação do SNR com senoide
-a −6 dBFS. Registramos aqui por que a resposta pode ser negativa em 1ª ordem
-com 1 bit, como hipótese a testar:
+**Situação:** não respondida. A varredura de amplitude fica arquivada.
+
+**Justificativa:** o modulador de 2ª ordem ataca o mesmo mecanismo, o
+ciclo-limite de período curto, e ao mesmo tempo melhora o SNR. O dither, ao
+contrário, só pode trocar tons por piso de ruído mais alto. A comparação entre
+ordens responde à pergunta de fundo (como remover os tons idle deste bloco) de
+forma mais útil que a varredura de dither, e é ela que alimenta a
+caracterização comparativa de arquiteturas.
+
+Hipóteses registradas para quando a pergunta for retomada, a testar por medida:
 
 - O degrau do quantizador é 2·FS. Um dither de 1 LSB quase nunca muda a
   decisão de sinal, então não deve alterar o ciclo-limite.
@@ -245,7 +251,10 @@ com 1 bit, como hipótese a testar:
   erro de quantização. Na banda, sua potência cresce com o quadrado da
   amplitude e se soma ao piso da senoide.
 
-Se nenhuma amplitude intermediária baixar os platôs sem elevar o piso a ponto de
-anular o ganho, o resultado entra na comparação de arquiteturas: ordem mais alta
-e MASH atacam os mesmos tons por outro caminho, com um estado mais longo que
-torna o ciclo-limite menos provável.
+**Estado do que já existe:** uma implementação de dither por LFSR (PRBS31,
+x³¹ + x²⁸ + 1, primitivo; amplitude de pico 2^k LSB; injetado na entrada do
+quantizador) está no branch local `arquivo/dither-lfsr`, fora do `main`. Nela, o
+LFSR do modelo e o do RTL geram a mesma sequência, com 0 divergências na saída
+e no dither ciclo a ciclo, e com `DITHER_EN = 0` o circuito é provadamente o
+mesmo do `main`. A varredura de amplitude não foi analisada, e nenhum número
+dela entra neste registro.

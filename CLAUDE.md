@@ -106,23 +106,22 @@ Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
 
 ## Próximos passos
 
-1. **Dither por LFSR: varrer a amplitude.**
-   - LFSR com polinômio primitivo, `DITHER_EN` e `DITHER_AMP` parametrizáveis,
-     injetado antes do quantizador.
-   - Amplitude em passos logarítmicos, de 1 LSB até uma fração significativa de
-     FS. 1 LSB quase nunca muda a decisão, porque o degrau do quantizador é
-     2·FS.
-   - Para cada amplitude, medir a profundidade dos platôs (com os zooms) e a
-     degradação do SNR com senoide a −6 dBFS. Entregar a curva de compromisso
-     com os dois eixos.
-   - **Requisito de aceitação:** o LFSR gera a mesma sequência, com a mesma
-     semente, no MATLAB/Octave e no Verilog, e a comparação bit a bit continua
-     valendo com o dither ligado.
-   - Se nenhuma amplitude resolver os platôs a custo aceitável em 1ª ordem com
-     1 bit, documentar isso como resultado.
+1. **Modulador de 2ª ordem (CIFB, Boser-Wooley)**, verificado com o mesmo rigor
+   da 1ª ordem e comparado diretamente com ela. Etapas, com parada ao fim de
+   cada uma: (1) estrutura, coeficientes e NTF; (2) modelo em ponto flutuante e
+   depois em ponto fixo, com contrato **novo e separado** em ;
+   (3) campanha de estabilidade: excursão **medida** de cada integrador,
+   ponto de sobrecarga, estado travado; (4) RTL com core comum e filtro de laço
+   trocável, e verificação bit a bit com controle negativo; (5) as mesmas
+   medidas da 1ª ordem, sem adaptar (SQNR × OSR, espectro, tons idle com os
+   mesmos zooms, área e frequência máxima). O contrato da 1ª ordem não muda.
 2. Vetores de rampa.
 3. Migrar o testbench para cocotb.
-4. Estender para ordem 2 e 3, e implementar as outras duas arquiteturas.
+4. Ordem 3 e as outras duas arquiteturas (error-feedback de ordem mais alta,
+   MASH 1-1-1).
+
+**Arquivado:** dither por LFSR. A varredura de amplitude é questão em aberto
+(), e o código está no branch local .
 
 ## Armadilhas já identificadas
 
