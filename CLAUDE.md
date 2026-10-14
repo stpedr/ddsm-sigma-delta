@@ -54,10 +54,16 @@ testbench fazem `` `include`` dele; o MATLAB lê com `model/le_params.m`.
   `rtl/ddsm2_params.vh`, modelos `model/ddsm2_flut.m` (ganhos 0,5) e
   `model/ddsm2.m` (forma inteira, **única** implementação do laço em ponto fixo).
   Ponto fixo e ponto flutuante têm 0 divergências; latência de 2 ciclos.
+- Etapa 3 (estabilidade) **medida**: o laço se recupera de qualquer senoide até
+  o fundo de escala; o SNR é máximo em A = 0,70 (71,3 dB) e fica a até 3 dB dele
+  até A = 0,90; **em DC u = −FS o laço diverge** (w2 linear, alarme); fora disso
+  max|w2| ≈ FS·(2/(1 − |x|) − 1) (ajuste empírico); w1 ≤ 4,61·FS (19 bits).
 - **⚠ PENDÊNCIA ABERTA: `DDSM2_W_I1` e `DDSM2_W_I2` (32 bits) são PROVISÓRIOS.**
-  Fechá-los na etapa 3 com a excursão medida, e decidir então a saturação. Até
-  lá o modelo não satura: estouro é **alarme**, reportado como resultado (laço
-  divergiu), nunca absorvido aumentando a largura.
+  Congelar depende de **decisão de contrato** (docs/ddsm2-cifb.md, seção 3,
+  "Decisão pendente"): faixa de entrada especificada (define a largura de w2:
+  21 bits para |x| ≤ 0,9 … 24 para ≤ 0,99) e o que fazer fora dela (clamp na
+  entrada e/ou saturação dos integradores, a medir antes de congelar). Até lá o
+  modelo não satura: estouro é **alarme**, nunca absorvido aumentando a largura.
 - `le_params('ddsm2')` lê o contrato da 2ª ordem; `le_params()` continua
   lendo o da 1ª.
 
@@ -127,8 +133,7 @@ Figuras: `figs/fig6_largura_platos.png` (principal: largura medida × prevista),
    da 1ª ordem e comparado diretamente com ela. Etapas, com parada ao fim de
    cada uma: (1) estrutura, coeficientes e NTF [feito]; (2) modelo em ponto flutuante e
    depois em ponto fixo, com contrato **novo e separado** em `rtl/ddsm2_params.vh` [feito; larguras provisórias];
-   (3) campanha de estabilidade: excursão **medida** de cada integrador,
-   ponto de sobrecarga, estado travado; (4) RTL com core comum e filtro de laço
+   (3) campanha de estabilidade [medida; larguras aguardam decisão de contrato]; (4) RTL com core comum e filtro de laço
    trocável, e verificação bit a bit com controle negativo; (5) as mesmas
    medidas da 1ª ordem, sem adaptar (SQNR × OSR, espectro, tons idle com os
    mesmos zooms, área e frequência máxima). O contrato da 1ª ordem não muda.

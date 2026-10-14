@@ -8,7 +8,7 @@ não muda.
 |---|---|
 | 1. Estrutura, coeficientes e NTF | concluída (seção 1) |
 | 2. Modelo em ponto flutuante e em ponto fixo, contrato `rtl/ddsm2_params.vh` | concluída (seção 2); larguras PROVISÓRIAS |
-| 3. Campanha de estabilidade | pendente |
+| 3. Campanha de estabilidade | medida (seção 3); larguras aguardam decisão de contrato |
 | 4. RTL com core comum e verificação bit a bit | pendente |
 | 5. Comparação com a 1ª ordem | pendente |
 
@@ -207,3 +207,147 @@ y_r ← (w2 ≥ 0)                 (w2 DEPOIS da atualização)
 
 Na 1ª ordem, o mesmo estímulo deu |acc|max = 1,50·FS. A regra FS·(1+A) da 1ª
 ordem não se aplica aqui. A etapa 3 mede a excursão em toda a faixa de entrada.
+
+## 3. Campanha de estabilidade
+
+`model/ddsm2_estab.m` (dados em `figs/ddsm2_estab.mat`), figura
+`figs/fig11_estab_2a_ordem.png` (`model/figura_estab.m`). Integradores com as
+larguras provisórias de 32 bits, sem saturação; estouro dessa faixa é alarme.
+
+### Critérios, fixados antes da medida
+
+- **Envelope normal:** excursão com entrada zero, em regime, vezes 2:
+  |w1| ≤ 2·FS, |w2| ≤ 4·FS. A excursão com entrada zero é |w1| ≤ 1,00·FS e
+  |w2| ≤ 2,00·FS.
+- **Recuperação:** estímulo por 2¹⁵ amostras, depois 2¹⁴ de entrada zero. O laço
+  se recupera se os dois estados entram no envelope em até R = 4096 ciclos e não
+  saem mais.
+- **Sobrecarga:** bisseção na amplitude de pico, com resolução de 1 LSB e esse
+  critério. Só vale se a recuperação for monotônica na grade, o que foi
+  conferido.
+- **Estado travado:** saída constante do fim do estímulo ao fim da janela.
+- **Estabilização da excursão:** máximo da segunda metade da janela de 2¹⁶ maior
+  que o da primeira → "não estabilizou".
+
+### Resultados
+
+**Senoide (23 amplitudes, de 0,05 a 1,00):**
+
+| A | max&#124;w1&#124; / FS | max&#124;w2&#124; / FS | razão w2/w1 | SNR (OSR 64) | 1ª ordem: max&#124;acc&#124; / FS |
+|---|---|---|---|---|---|
+| 0,10 | 1,96 | 2,85 | 1,45 | 57,8 dB | 1,10 |
+| 0,30 | 2,22 | 3,18 | 1,43 | 67,3 dB | 1,30 |
+| 0,50 | 2,70 | 4,07 | 1,51 | 70,7 dB | 1,50 |
+| 0,70 | 3,08 | 5,88 | 1,91 | **71,3 dB** (máximo) | 1,70 |
+| 0,80 | 3,33 | 7,73 | 2,32 | 70,9 dB | 1,80 |
+| 0,90 | 3,18 | 10,85 | 3,05 | 68,8 dB | 1,90 |
+| 0,95 | 3,14 | 15,54 | 4,95 | 61,1 dB | 1,95 |
+| 0,98 | 3,72 | 40,10 | 10,35 | 46,2 dB | 1,98 |
+| 1,00 | 4,61 | 131,71 | 27,79 | 35,1 dB | 2,00 |
+
+Para A = 0,85, 0,90, 0,98 e 1,00, o máximo de w2 da tabela vem da janela de
+2²⁰ amostras (ver "estabilização" abaixo). A razão w2/w1 foi calculada na
+janela de 2¹⁶.
+
+- **Não há amplitude de senoide sem recuperação:** o laço se recuperou em toda a
+  grade, até o fundo de escala (pico de 32 767 LSB), com tempo de recuperação 0.
+  A recuperação foi monotônica (trivialmente: todas recuperam), e a bisseção não
+  teve fronteira para buscar.
+- **Sobrecarga de desempenho:** o SNR é máximo em A = 0,70 (71,3 dB), fica a até
+  3 dB do máximo até A = 0,90 (68,8 dB) e cai rápido depois: 61,1 dB em 0,95 e
+  35,1 dB em 1,00. Nessa mesma faixa, a excursão de w2 cresce rápido.
+
+**DC (39 códigos, dos dois sinais, finos junto a ±FS):**
+
+- **Em u = −FS (x = −1) o laço diverge.** w2 cresce
+  linearmente, em −2·FS por amostra (w1 vai a −4·FS): −131 070·FS em 2¹⁶ amostras e −524 286·FS em
+  2¹⁸. O alarme dispara (32 769 ciclos fora dos 32 bits) e o laço não se
+  recupera. A saída fica em 0 durante todo o estímulo (65 534 amostras), que é a
+  média correta para x = −1, mas o estado interno diverge. Na 1ª ordem, o mesmo
+  estímulo deixa o acumulador parado.
+- **Fora de −FS a excursão é limitada, mas w2 cresce como 1/(1 − |x|).** Do lado
+  negativo, max|w2| segue o ajuste empírico **FS·(2/(1 − |x|) − 1)** com resíduo
+  de até 1,14·FS (em |x| = 0,6) para |x| ≥ 0,5, e exato a 0,3·FS para |x| ≥ 0,7.
+  Exemplos: 19,00·FS em x = −0,9 (ajuste 19,0), 198,8·FS em −0,99 (199,0) e
+  4095,0·FS em u = −32 752 (4095,0). Do lado positivo os valores ficam abaixo do
+  ajuste e se aproximam dele perto de +1: 12,5·FS em +0,9 e 64 815·FS em
+  u = 32 767, contra 65 535 do ajuste. O ajuste é uma constatação, não uma
+  derivação.
+- w1 fica limitado em todo DC: |w1| ≤ 4,00·FS, perto de FS·(1 + 3|x|) para
+  |x| ≥ 0,5.
+- **Recuperação de DC** (bisseção, depende de R = 4096): recupera até u = −32 764
+  (x = −0,999878) e até u = +32 752 (x = +0,999512). Fora desses códigos, o tempo
+  para voltar ao envelope passa de R, porque w2 parte de valores muito grandes.
+
+**Rampa de −FS a FS − 1 em 2¹⁶ amostras:** w1 em [−4,00; 3,23]·FS, w2 em
+[−482,7; 134,0]·FS, sem alarme. A excursão de w2 vem do começo da rampa, perto
+de x = −1. Na 1ª ordem, o mesmo estímulo dá 2,00·FS.
+
+**Estado travado:** nenhum, pelo critério definido (saída constante depois do
+fim do estímulo). Durante o estímulo, nos extremos, a saída fica constante por
+dezenas de milhares de ciclos: 65 534 em u = −FS e 65 173 em u = FS − 1.
+
+**Estabilização da excursão:** o critério fixado marcou 18 senoides e 8 DCs.
+Medindo de novo com janela de 2¹⁸ (4 vezes maior):
+- 13 senoides e 6 DCs não mudaram nada. O critério era sensível demais: com
+  senoide, o pico cai em fases diferentes de cada metade da janela.
+- Em 4 senoides (A = 0,85, 0,90, 0,98, 1,00), o máximo cresceu de 2% a 12% em
+  2¹⁸. Com 2²⁰ amostras ficou igual ao de 2¹⁸: a excursão é **limitada**, só
+  precisava de uma janela maior para ser atingida.
+- O único crescimento real é o DC em u = −FS, que é linear.
+
+### A regra da 1ª ordem não vale na 2ª
+
+Na 1ª ordem, a realimentação de fundo de escala garante |acc| ≤ FS·(1 + |x|) ≤
+2·FS para qualquer entrada. Na 2ª ordem não há teto: w2 já chega a 2·FS com
+entrada zero, chega a 4·FS em A = 0,5 contra 1,5 na 1ª ordem, e cresce como
+2/(1 − |x|) perto do fundo de escala, até divergir em x = −1. O painel (a) da
+fig11 mostra os dois comportamentos lado a lado.
+
+### Razão entre as excursões dos integradores
+
+A razão max|w2| / max|w1| é **estável só no regime moderado**: 1,43 a 1,52 para
+senoides com A ≤ 0,50, e 1,40 a 1,46 para DC com 0,1 ≤ |x| ≤ 0,4. Acima disso ela
+cresce com a amplitude (3,05 em A = 0,9 e 27,8 em A = 1,0) porque só w2 tem a
+dependência em 1/(1 − |x|). Conclusões:
+
+- No regime moderado, w2 pede sistematicamente cerca de 1,5 vezes a faixa de
+  w1, ou seja, pouco mais de meio bit. No laço digital, mudar a escala entre os
+  estágios não muda nenhuma decisão do quantizador (só o sinal de w2 importa):
+  muda só onde ficam os bits. Uma escala diferente de 1 entre os estágios
+  exigiria divisão e introduziria truncamento, que a forma inteira evita.
+- O crescimento perto do fundo de escala não é um desequilíbrio de escala que
+  coeficientes resolvam; é a dinâmica do laço de 2ª ordem com 1 bit perto da
+  sobrecarga.
+
+### Larguras: o que a medida permite decidir
+
+**w1:** pior caso medido de 4,61·FS (151 k LSB, senoide com A = 1). Cabe em
+**19 bits**, com faixa de ±8·FS e margem de 1,7×, em toda a faixa de entrada.
+
+**w2:** não existe largura finita que cubra a faixa de entrada inteira. Em
+u = −FS o laço diverge, e de −FS + 1 a FS − 1 a excursão chega a 2³¹ LSB. A
+largura depende de **até onde a entrada pode ir**:
+
+| entrada limitada a | pior max&#124;w2&#124; medido | largura com sinal |
+|---|---|---|
+| &#124;x&#124; ≤ 0,90 (SNR a até 3 dB do máximo) | 19,0·FS (DC −0,9) | 21 bits (±32·FS) |
+| &#124;x&#124; ≤ 0,95 | 39,1·FS (DC −0,95) | 22 bits (±64·FS) |
+| &#124;x&#124; ≤ 0,99 | 198,8·FS (DC −0,99) | 24 bits (±256·FS) |
+| −FS + 1 ≤ u ≤ FS − 1 | 65 535·FS (ajuste) | 33 bits |
+| u = −FS | diverge | nenhuma |
+
+A decisão é de contrato e fica com você (seção "Decisão pendente" abaixo).
+
+### Decisão pendente (antes de congelar `ddsm2_params.vh`)
+
+1. **Faixa de entrada especificada** da 2ª ordem. A tabela acima dá a largura de
+   w2 para cada escolha. |x| ≤ 0,9 coincide com a faixa em que o SNR fica a até
+   3 dB do máximo.
+2. **O que acontece fora dela.** A entrada é uma palavra de 16 bits e pode
+   chegar a −FS, onde o laço diverge. As opções são limitar a entrada no RTL
+   (*clamp*, o que muda o contrato de entrada), saturar os integradores na
+   largura escolhida, ou as duas coisas. A saturação muda a dinâmica justamente
+   na região de sobrecarga. Se for escolhida, o modelo passa a saturar, e isto
+   precisa ser medido antes de congelar: ela não atua dentro da faixa
+   especificada, e o laço saturado se recupera de u = −FS.

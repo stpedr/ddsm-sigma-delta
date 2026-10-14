@@ -1,6 +1,8 @@
-function [y, ex, al] = ddsm2(u, P)
+function [y, ex, al, tr] = ddsm2(u, P)
 % DDSM2  Modulador de 2a ordem (CIFB, Boser-Wooley), aritmetica inteira.
 %   [y, ex, al] = ddsm2(u, P)
+%   [y, ex, al, tr] = ddsm2(u, P)   tambem devolve a trajetoria tr.w1, tr.w2
+%                                   (estado apos cada atualizacao)
 %   u  : entrada em LSBs (inteiros com sinal)
 %   P  : le_params('ddsm2') -- coeficientes e larguras PROVISORIAS
 %   y  : saida em {0,1}, o registro de saida a cada ciclo
@@ -30,6 +32,8 @@ function [y, ex, al] = ddsm2(u, P)
     w1 = 0; w2 = 0; yr = 0;
     ex.w1 = [0 0]; ex.w2 = [0 0];
     al.n1 = 0; al.n2 = 0; al.primeiro = 0;
+    guarda = nargout > 3;
+    if guarda, tr.w1 = zeros(1, N); tr.w2 = zeros(1, N); end
 
     for i = 1:N
         if yr, fb = FS; else, fb = -FS; end
@@ -38,6 +42,7 @@ function [y, ex, al] = ddsm2(u, P)
         w1  = w1n;
         yr  = double(w2 >= 0);
         y(i) = yr;
+        if guarda, tr.w1(i) = w1; tr.w2(i) = w2; end
 
         ex.w1 = [min(ex.w1(1), w1), max(ex.w1(2), w1)];
         ex.w2 = [min(ex.w2(1), w2), max(ex.w2(2), w2)];
